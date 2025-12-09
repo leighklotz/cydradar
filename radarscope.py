@@ -1,6 +1,9 @@
+import math
+import utime
+
 class RadarScope:
     """Radar display component using CYD display primitives (expects fb=cyd.display)."""
-    def __init__(self, fb, center_x, center_y, radius, font=None, config=_cfg):
+    def __init__(self, fb, center_x, center_y, radius, font=None, config=None):
         """
         fb: cyd.display instance
         center_x, center_y: center pixel coordinates on the display
@@ -48,10 +51,10 @@ class RadarScope:
         callsign = str(aircraft.callsign)
         if self.font is not None:
             # draw_text(x, y, text, font, color, background)
-            self.fb.draw_text(x + 8, y - 12, callsign, self.font, colour, BLACK)
+            self.fb.draw_text(x + 8, y - 12, callsign, self.font, colour, self.cfg.BLACK)
         else:
             # draw_text8x8(x, y, text, color, background=...)
-            self.fb.draw_text8x8(x + 8, y - 12, callsign, colour, background=BLACK)
+            self.fb.draw_text8x8(x + 8, y - 12, callsign, colour, background=self.cfg.BLACK)
 
     def draw(self, aircraft_list):
         """Draw radar rings, crosshairs and aircraft. Does not clear entire screen."""
@@ -69,22 +72,22 @@ class RadarScope:
             if coords and coords[0] != coords[-1]:
                 coords.append(coords[0])
             print(coords)
-            self.fb.draw_lines(coords, DIM_GREEN)
+            self.fb.draw_lines(coords, self.cfg.DIM_GREEN)
 
             # label ring
             range_nm = int((ring / 3) * self.cfg.RADIUS_NM)
             label = "{}NM".format(range_nm)
             if self.font is not None:
-                self.fb.draw_text(self.center_x + ring_radius - 20, self.center_y + 5, label, self.font, DIM_GREEN, BLACK)
+                self.fb.draw_text(self.center_x + ring_radius - 20, self.center_y + 5, label, self.font, self.cfg.DIM_GREEN, self.cfg.BLACK)
             else:
-                self.fb.draw_text8x8(self.center_x + ring_radius - 20, self.center_y + 5, label, DIM_GREEN, background=BLACK)
+                self.fb.draw_text8x8(self.center_x + ring_radius - 20, self.center_y + 5, label, self.cfg.DIM_GREEN, background=self.cfg.BLACK)
 
         # crosshairs - two straight lines
-        self.fb.draw_line(self.center_x - self.radius, self.center_y, self.center_x + self.radius, self.center_y, DIM_GREEN)
-        self.fb.draw_line(self.center_x, self.center_y - self.radius, self.center_x, self.center_y + self.radius, DIM_GREEN)
+        self.fb.draw_line(self.center_x - self.radius, self.center_y, self.center_x + self.radius, self.center_y, self.cfg.DIM_GREEN)
+        self.fb.draw_line(self.center_x, self.center_y - self.radius, self.center_x, self.center_y + self.radius, self.cfg.DIM_GREEN)
 
         # center mark
-        self.fb.fill_circle(self.center_x, self.center_y, 2, BRIGHT_GREEN)
+        self.fb.fill_circle(self.center_x, self.center_y, 2, self.cfg.BRIGHT_GREEN)
 
         # blink state for military blips
         blink_state = ((utime.ticks_ms() // 500) & 1) == 0
@@ -95,7 +98,7 @@ class RadarScope:
                 x, y = pos
                 if aircraft.is_military:
                     if not self.cfg.BLINK_MILITARY or blink_state:
-                        self.draw_aircraft(aircraft, x, y, RED)
+                        self.draw_aircraft(aircraft, x, y, self.cfg.RED)
                 else:
-                    self.draw_aircraft(aircraft, x, y, BRIGHT_GREEN)
+                    self.draw_aircraft(aircraft, x, y, self.cfg.BRIGHT_GREEN)
 

@@ -40,14 +40,6 @@ import math
 import utime
 from ili9341 import color565
 
-# Color constants (16-bit RGB565 values)
-BRIGHT_GREEN = color565(0, 255, 0)
-DIM_GREEN = color565(0, 128, 0)
-RED = color565(255, 0, 0)
-AMBER = color565(255, 191, 0)
-YELLOW = color565(255, 255, 0)
-BLACK = color565(0, 0, 0)
-
 class _cfg:
     LAT = 0.0
     LON = 0.0
@@ -59,6 +51,13 @@ class _cfg:
     FETCH_INTERVAL = 5
     MAX_TABLE_ROWS = 8
     DEFAULT_FONT_HEIGHT = 8
+    # Color constants (16-bit RGB565 values)
+    BRIGHT_GREEN = color565(0, 255, 0)
+    DIM_GREEN = color565(0, 128, 0)
+    RED = color565(255, 0, 0)
+    AMBER = color565(255, 191, 0)
+    YELLOW = color565(255, 255, 0)
+    BLACK = color565(0, 0, 0)
 
 # Simple sample Aircraft class for example usage and tests
 class SampleAircraft:
@@ -96,19 +95,19 @@ class DataTable:
     def draw(self, aircraft_list, status, last_update_ticks_ms):
         """Render the table and status information."""
         # border
-        print(f"self.fb.draw_rectangle({self.x=}, {self.y=}, {self.width=}, {self.height=}, {BRIGHT_GREEN=})")
-        self.fb.draw_rectangle(self.x, self.y, self.width, self.height, BRIGHT_GREEN)
+        print(f"self.fb.draw_rectangle({self.x=}, {self.y=}, {self.width=}, {self.height=}, {self.cfg.BRIGHT_GREEN=})")
+        self.fb.draw_rectangle(self.x, self.y, self.width, self.height, self.cfg.BRIGHT_GREEN)
 
         # title
         title = "AIRCRAFT DATA"
         if self.table_font is not None:
             title_x = self.x + (self.width // 2) - (len(title) * self.table_font.width // 2)
-            print(f"self.fb.draw_text({title_x=}, {self.y=} + 4, {title=}, {self.table_font=}, AMBER, BLACK)")
-            self.fb.draw_text(title_x, self.y + 4, title, self.table_font, AMBER, BLACK)
+            print(f"self.fb.draw_text({title_x=}, {self.y=} + 4, {title=}, {self.table_font=}, self.cfg.AMBER, self.cfg.BLACK)")
+            self.fb.draw_text(title_x, self.y + 4, title, self.table_font, self.cfg.AMBER, self.cfg.BLACK)
         else:
             title_x = self.x + (self.width // 2) - (len(title) * 8 // 2)
-            self.fb.draw_text8x8(title_x, self.y + 4, title, AMBER, background=BLACK)
-            print(f"self.fb.draw_text8x8({title_x=}, {self.y=} + 4, {title=}, AMBER, background=BLACK)")
+            self.fb.draw_text8x8(title_x, self.y + 4, title, AMBER, background=self.cfg.BLACK)
+            print(f"self.fb.draw_text8x8({title_x=}, {self.y=} + 4, {title=}, self.cfg.AMBER, background=self.cfg.BLACK)")
 
         # headers and column positions
         headers_y = self.y + 20
@@ -125,12 +124,12 @@ class DataTable:
         # draw headers
         for i, h in enumerate(headers):
             if self.table_font is not None:
-                self.fb.draw_text(col_positions[i], headers_y, h, self.table_font, AMBER, BLACK)
+                self.fb.draw_text(col_positions[i], headers_y, h, self.table_font, self.cfg.AMBER, self.cfg.BLACK)
             else:
-                self.fb.draw_text8x8(col_positions[i], headers_y, h, AMBER, background=BLACK)
+                self.fb.draw_text8x8(col_positions[i], headers_y, h, self.cfg.AMBER, background=self.cfg.BLACK)
 
         # separator line
-        self.fb.draw_line(self.x + 4, headers_y + self.table_font_h, self.x + self.width - 4, headers_y + self.table_font_h, DIM_GREEN)
+        self.fb.draw_line(self.x + 4, headers_y + self.table_font_h, self.x + self.width - 4, headers_y + self.table_font_h, self.cfg.DIM_GREEN)
 
         # rows (sorted by distance)
         sorted_ac = sorted(aircraft_list, key=lambda a: getattr(a, "distance", 9999))
@@ -138,7 +137,7 @@ class DataTable:
         row_h = self.table_font_h + 2
         for i, aircraft in enumerate(sorted_ac[: self.cfg.MAX_TABLE_ROWS]):
             y_pos = start_y + i * row_h
-            colour = RED if aircraft.is_military else BRIGHT_GREEN
+            colour = self.cfg.RED if aircraft.is_military else self.cfg.BRIGHT_GREEN
             callsign = "{}".format(aircraft.callsign)[:8]
             altitude = "{}".format(aircraft.altitude) if isinstance(aircraft.altitude, int) and aircraft.altitude > 0 else "N/A"
             speed = "{}".format(int(aircraft.speed)) if getattr(aircraft, "speed", 0) and aircraft.speed > 0 else "N/A"
@@ -147,9 +146,9 @@ class DataTable:
             cols = [callsign, altitude, speed, distance, track]
             for j, val in enumerate(cols):
                 if self.table_font is not None:
-                    self.fb.draw_text(col_positions[j], y_pos, str(val), self.table_font, colour, BLACK)
+                    self.fb.draw_text(col_positions[j], y_pos, str(val), self.table_font, colour, self.cfg.BLACK)
                 else:
-                    self.fb.draw_text8x8(col_positions[j], y_pos, str(val), colour, background=BLACK)
+                    self.fb.draw_text8x8(col_positions[j], y_pos, str(val), colour, background=self.cfg.BLACK)
 
         # footer status
         military_count = sum(1 for a in aircraft_list if a.is_military)
@@ -168,8 +167,8 @@ class DataTable:
         ]
         status_y = self.y + self.height - (len(status_info) * self.status_font_h) - 4
         for i, s in enumerate(status_info):
-            colour = YELLOW if "UPDATING" in s else BRIGHT_GREEN
+            colour = YELLOW if "UPDATING" in s else self.cfg.BRIGHT_GREEN
             if self.status_font is not None:
-                self.fb.draw_text(self.x + 6, status_y + i * self.status_font_h, s, self.status_font, colour, BLACK)
+                self.fb.draw_text(self.x + 6, status_y + i * self.status_font_h, s, self.status_font, colour, self.cfg.BLACK)
             else:
-                self.fb.draw_text8x8(self.x + 6, status_y + i * self.status_font_h, s, colour, background=BLACK)
+                self.fb.draw_text8x8(self.x + 6, status_y + i * self.status_font_h, s, colour, background=self.cfg.BLACK)

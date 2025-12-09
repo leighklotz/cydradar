@@ -75,12 +75,13 @@ class RadarScope:
             self.fb.draw_lines(coords, self.cfg.DIM_GREEN)
 
             # label ring
-            range_nm = int((ring / 3) * self.cfg.RADIUS_NM)
-            label = "{}NM".format(range_nm)
-            if self.font is not None:
-                self.fb.draw_text(self.center_x + ring_radius - 20, self.center_y + 5, label, self.font, self.cfg.DIM_GREEN, self.cfg.BLACK)
-            else:
-                self.fb.draw_text8x8(self.center_x + ring_radius - 20, self.center_y + 5, label, self.cfg.DIM_GREEN, background=self.cfg.BLACK)
+            if self.cfg.LABEL_RING:
+                range_nm = int((ring / 3) * self.cfg.RADIUS_NM)
+                label = "{}NM".format(range_nm)
+                if self.font is not None:
+                    self.fb.draw_text(self.center_x + ring_radius - 20, self.center_y + 5, label, self.font, self.cfg.DIM_GREEN, self.cfg.BLACK)
+                else:
+                    self.fb.draw_text8x8(self.center_x + ring_radius - 20, self.center_y + 5, label, self.cfg.DIM_GREEN, background=self.cfg.BLACK)
 
         # crosshairs - two straight lines
         self.fb.draw_line(self.center_x - self.radius, self.center_y, self.center_x + self.radius, self.center_y, self.cfg.DIM_GREEN)

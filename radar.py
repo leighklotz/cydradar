@@ -13,10 +13,11 @@ import utime
 import random
 
 from xglcd_font import XglcdFont
-from ui_components_map import DataTable, SampleAircraft, _cfg
-
-# from sweep import RadarSweepScope
+from datatable import DataTable
+from aircraft import SampleAircraft
+from cfg import _cfg
 from radarscope import RadarScope
+# from sweep import RadarSweepScope
 
 # initialize display
 cyd = CYD(display_width=240, display_height=320, rotation=0)
@@ -88,20 +89,16 @@ def scope_loop():
     """
     Continuous scope loop. Call from REPL or main.
     """
-    # do an initial full redraw to ensure background & ring labels are present
-    aircraft_list = fetch_your_data()
-    radar.draw(aircraft_list)  # full redraw once at startup
-    table.draw(aircraft_list, status="OK", last_update_ticks_ms=utime.ticks_ms())
-
-    try:
-        while True:
-            now = utime.ticks_ms()
-            aircraft_list = fetch_your_data()
-            radar.draw(aircraft_list)
-            table.draw(aircraft_list, status="OK", last_update_ticks_ms=now)
-    except KeyboardInterrupt:
-        # stop cleanly in REPL
-        print("Scope stopped by user")
+    start = utime.ticks_ms()
+    while True:
+        utime.sleep_ms(100)
+        aircraft_list = fetch_your_data()
+        now = utime.ticks_ms()
+        if (now - start) > 10*1000:
+            fb.clear(_cfg.BLACK)
+            start = now
+        radar.draw(aircraft_list)
+        table.draw(aircraft_list, status="OK", last_update_ticks_ms=now)
 
 # Example: run a few steps for testing
 if __name__ == "__main__":

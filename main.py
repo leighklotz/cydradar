@@ -1,5 +1,5 @@
 import radar
 
-radar.sweep_loop()
+# radar.sweep_loop()
+radar.scope_loop()
 
-#

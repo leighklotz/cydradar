@@ -69,6 +69,7 @@ class DataTable:
         sorted_ac = sorted(aircraft_list, key=lambda a: getattr(a, "distance", 9999))
         start_y = headers_y + self.table_font_h + 4
         row_h = self.table_font_h + 2
+        y_pos = start_y
         for i, aircraft in enumerate(sorted_ac[: self.cfg.MAX_TABLE_ROWS]):
             print(f"table: {i=} {aircraft.__dict__}")
             y_pos = start_y + i * row_h

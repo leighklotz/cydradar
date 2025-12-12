@@ -39,7 +39,7 @@ class RadarScope:
         else:
             # draw_pixel did not show up
             #self.fb.draw_pixel(x, y, pip_color) 
-            self.fb.fill_circle(x, y, 1, pip_color)
+            self.fb.fill_circle(x, y, 2, pip_color)
         # projection line based on track and speed
         if getattr(aircraft, "track", 0) and aircraft.track > 0:
             track_rad = math.radians(aircraft.track)

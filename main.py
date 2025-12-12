@@ -1,5 +1,6 @@
 import radar
+import wifi
 
-# radar.sweep_loop()
+wifi.connect_to_wifi()
+# radar.scope_loop(once=True)
 radar.scope_loop()
-

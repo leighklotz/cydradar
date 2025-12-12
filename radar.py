@@ -11,44 +11,32 @@ from cydr import CYD
 
 import utime
 import random
+import json
 
 from xglcd_font import XglcdFont
 from datatable import DataTable
-from aircraft import SampleAircraft
+from aircraft import Aircraft
 from cfg import _cfg
 from radarscope import RadarScope
+from fetch import AircraftTracker
 # from sweep import RadarSweepScope
 
 # initialize display
-cyd = CYD(display_width=240, display_height=320, rotation=0)
+cyd = CYD(display_width=240, display_height=320, rotation=180)
 fb = cyd.display
 fb.clear(_cfg.BLACK)
 
 # sample aircraft dataset
-def rand_pos():
-    return random.uniform(-0.5, 0.5)
-
-def ac1(): return SampleAircraft(callsign="ALFA01", lat=rand_pos(), lon=rand_pos(), track=45, speed=250, altitude=12000, distance=5.0, is_military=False)
-def ac2(): return SampleAircraft(callsign="BRAVO2", lat=rand_pos(), lon=rand_pos(), track=270, speed=120, altitude=8000, distance=8.2, is_military=True)
-def ac3(): return SampleAircraft(callsign="CHAR3", lat=rand_pos(), lon=rand_pos(), track=180, speed=350, altitude=30000, distance=12.5, is_military=False)
 
 status_font = XglcdFont('fonts/Neato5x7.c', 5, 7, letter_count=223)
 table_font = XglcdFont('fonts/FixedFont5x8.c', 5, 8, letter_count=223)
-
-# create radar sweep widget (tune segments/radius_step/trail_length for performance/appearance)
-#radar = RadarSweepScope(fb, 120, 80, 70, segments=10, radius_step=2, trail_length=0, show_pip_labels=True)
-#radar = RadarSweepScope(fb, 120, 80, 70, segments=0, radius_step=2, trail_length=0, show_pip_labels=True)
-
 radar = RadarScope(fb, center_x=120, center_y=80, radius=70, font=status_font, config=_cfg)
-
-# data table
-# table = DataTable(fb, x=4, y=170, width=312, height=66, font=None)
 table = DataTable(fb, x=4, y=170, width=236, height=150, 
                   table_font=table_font, status_font=status_font)
+aircraft_tracker = AircraftTracker()
 
 def fetch_your_data():
-    # Replace with real data fetch. Returning the sample list here.
-    return [ac1(), ac2(), ac3()]
+    return aircraft_tracker.fetch_data()
 
 def single_update():
     """
@@ -85,20 +73,30 @@ def sweep_loop(step_delay_ms=30):
         # stop cleanly in REPL
         print("Sweep stopped by user")
 
-def scope_loop():
+def scope_loop(once=False):
     """
     Continuous scope loop. Call from REPL or main.
     """
     start = utime.ticks_ms()
+    previous_aircraft = set()
+    radar.draw_scope()
     while True:
-        utime.sleep_ms(100)
+        x, y = cyd.touches()
         aircraft_list = fetch_your_data()
         now = utime.ticks_ms()
-        if (now - start) > 10*1000:
+        if x != 0 and y != 0:
+            print("clearing screen")
             fb.clear(_cfg.BLACK)
+            radar.draw_scope()
             start = now
-        radar.draw(aircraft_list)
+            previous_aircraft = set()
+
+        radar.draw_planes(aircraft_list, previous_aircraft)
         table.draw(aircraft_list, status="OK", last_update_ticks_ms=now)
+        if once: break
+        previous_aircraft.update(craft.hex_code for craft in aircraft_list if craft.hex_code is not None)
+        utime.sleep_ms(1000)
+
 
 # Example: run a few steps for testing
 if __name__ == "__main__":

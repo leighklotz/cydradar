@@ -369,3 +369,33 @@ class RadarSweepScope:
     def sweep(self, aircraft_list=None):
         """Alias for step(...)."""
         return self.step(aircraft_list)
+
+
+
+# --------------------------------
+# usage
+### # RadarSweepScope:
+### # sweep_loop(step_delay_ms=30)
+### def sweep_loop(step_delay_ms=30):
+###     """
+###     Continuous sweep loop. Call from REPL or main.
+###     step_delay_ms: ms to sleep between steps (tune for appearance vs CPU)
+###     """
+###     # do an initial full redraw to ensure background & ring labels are present
+###     aircraft_list = fetch_your_data()
+###     radar.draw(aircraft_list, sweep=False)  # full redraw once at startup
+###     table.draw(aircraft_list, status="OK", last_update_ticks_ms=utime.ticks_ms())
+### 
+###     try:
+###         while True:
+###             now = utime.ticks_ms()
+###             aircraft_list = fetch_your_data()
+###             # advance by one segment (show pip labels when illuminated)
+###             radar.step(aircraft_list)
+###             # refresh the table with the same timestamp for a consistent UI
+###             table.draw(aircraft_list, status="OK", last_update_ticks_ms=now)
+###             utime.sleep_ms(step_delay_ms)
+###     except KeyboardInterrupt:
+###         # stop cleanly in REPL
+###         print("Sweep stopped by user")
+

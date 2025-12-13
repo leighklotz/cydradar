@@ -153,9 +153,9 @@ class DataTable:
                 return hex_code
         
         # Touch is in table but not on a row - signal deselect
-        if len(self.row_layout) > 0:
+        if self.row_layout:
             # Only return 'deselect' if touch is in the data area (below first row)
-            first_row_y = self.row_layout[0][1] if self.row_layout else self.y
+            first_row_y = self.row_layout[0][1]
             if y >= first_row_y:
                 return 'deselect'
         
@@ -171,7 +171,7 @@ class DataTable:
             return False
         
         # Header area is from table top to just before first data row
-        if len(self.row_layout) > 0:
+        if self.row_layout:
             first_row_y = self.row_layout[0][1]
             return y < first_row_y
         

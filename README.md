@@ -14,6 +14,7 @@ It fetches aircraft data from a local dump1090 instance (or similar) and visuali
 *   **Military Aircraft Identification:** Optionally highlights military aircraft in red.
 *   **Configurable Parameters:** Adjustable range, display colors, and other settings.
 *   **MicroPython Compatibility:** Specifically designed for MicroPython on ESP32 with the CYD library.
+*   **Touch screen:** Pressing the touch screen switches layouts.
 
 ## Hardware Requirements
 

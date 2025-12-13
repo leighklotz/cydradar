@@ -9,11 +9,13 @@ class DataTable:
     """Aircraft data table component using CYD display primitives."""
     def __init__(self, fb, x, y, width, height,
                  table_font=None, status_font=None,
+                 compact=False,
                  config=_cfg):
         """
         fb: cyd.display instance
         x,y,width,height: table rectangle
         font: XglcdFont-compatible font, or None to use draw_text8x8
+        compact: omit the status stanza and just show the air traffic, etc.
         """
         self.fb = fb
         self.x = x
@@ -25,6 +27,7 @@ class DataTable:
         self.cfg = config
         self.table_font_h = getattr(table_font, "height", config.DEFAULT_FONT_HEIGHT)
         self.status_font_h = getattr(status_font, "height", config.DEFAULT_FONT_HEIGHT)
+        self.compact = compact
 
     def draw(self, aircraft_list, status, last_update_ticks_ms):
         """Render the table and status information."""
@@ -88,25 +91,27 @@ class DataTable:
                 y_pos += row_h
                 self.fb.fill_rectangle(5, y_pos, self.width, row_h-5, self.cfg.BLACK)
 
-        # footer status
-        military_count = sum(1 for a in aircraft_list if a.is_military)
-        if last_update_ticks_ms:
-            elapsed = (utime.ticks_ms() - last_update_ticks_ms) / 1000.0
-        else:
-            elapsed = 9999.0
-        countdown = max(0, self.cfg.FETCH_INTERVAL - elapsed)
-        countdown_text = "{:02d}S".format(int(countdown)) if countdown > 0 else "UPDATING"
-        status_info = [
-            "STATUS: {}".format(status),
-            "CONTACTS: {} ({} MIL)".format(len(aircraft_list), military_count),
-            "RANGE: {}NM".format(self.cfg.RADIUS_NM),
-            "INTERVAL: {}S".format(self.cfg.FETCH_INTERVAL),
-            "NEXT UPDATE: {}".format(countdown_text),
-        ]
-        status_y = self.y + self.height - (len(status_info) * self.status_font_h) - 4
-        for i, s in enumerate(status_info):
-            color = YELLOW if "UPDATING" in s else self.cfg.BRIGHT_GREEN
-            if self.status_font is not None:
-                self.fb.draw_text(self.x + 6, status_y + i * self.status_font_h, s, self.status_font, color, self.cfg.BLACK)
+        if not self.compact:
+            # footer status
+            military_count = sum(1 for a in aircraft_list if a.is_military)
+            if last_update_ticks_ms:
+                elapsed = (utime.ticks_ms() - last_update_ticks_ms) / 1000.0
             else:
-                self.fb.draw_text8x8(self.x + 6, status_y + i * self.status_font_h, s, color, background=self.cfg.BLACK)
+                elapsed = 9999.0
+            countdown = max(0, self.cfg.FETCH_INTERVAL - elapsed)
+            countdown_text = "{:02d}S".format(int(countdown)) if countdown > 0 else "UPDATING"
+            status_info = [
+                "STATUS: {}".format(status),
+                "CONTACTS: {} ({} MIL)".format(len(aircraft_list), military_count),
+                "RANGE: {}NM".format(self.cfg.RADIUS_NM),
+                "INTERVAL: {}S".format(self.cfg.FETCH_INTERVAL),
+                "NEXT UPDATE: {}".format(countdown_text),
+            ]
+
+            status_y = self.y + self.height - (len(status_info) * self.status_font_h) - 4
+            for i, s in enumerate(status_info):
+                color = self.cfg.YELLOW if "UPDATING" in s else self.cfg.BRIGHT_GREEN
+                if self.status_font is not None:
+                    self.fb.draw_text(self.x + 6, status_y + i * self.status_font_h, s, self.status_font, color, self.cfg.BLACK)
+                else:
+                    self.fb.draw_text8x8(self.x + 6, status_y + i * self.status_font_h, s, color, background=self.cfg.BLACK)

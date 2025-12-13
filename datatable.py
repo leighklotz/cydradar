@@ -35,7 +35,6 @@ class DataTable:
         self.row_hex_cache = {}  # y_pos -> (hex_code, is_selected) - tracks what's at each row
         self.max_rows = 0  # Calculated dynamically
         # Constants
-        self.TEXT_PADDING = '   '  # Padding added to text to clear old content
         self.DEFAULT_ROW_STATE = (None, False)  # (hex_code, is_selected) for empty row
 
     def draw(self, aircraft_list, status, last_update_ticks_ms, selected_hex=None):
@@ -133,15 +132,33 @@ class DataTable:
             # CALL: 8 chars left-aligned
             # ALT: 5 chars right-aligned (up to 99999 ft)
             # SPD: 3 chars right-aligned (up to 999 kts)
-            # DIST: 4 chars right-aligned (up to 99.9 nm)
-            # TRK: 4 chars right-aligned (up to 999°)
+            # DIST: 4 chars right-aligned (up to 99.9 nm, or 99+ for 100+)
+            # TRK: 4 chars right-aligned (up to 999°, or 999 for 1000+)
             # SQUAWK: 4 chars left-aligned
             callsign = ("{:<8}".format(aircraft.callsign[:8]) if aircraft.callsign else "{:<8}".format(aircraft.hex_code[:8]))
             altitude = "{:>5}".format(aircraft.altitude) if isinstance(aircraft.altitude, int) and aircraft.altitude > 0 else "{:>5}".format("-")
             speed = "{:>3}".format(int(aircraft.speed)) if getattr(aircraft, "speed", 0) and aircraft.speed > 0 else "{:>3}".format("-")
-            distance = "{:>4}".format("{:.1f}".format(aircraft.distance)[:4]) if getattr(aircraft, "distance", 0) and aircraft.distance > 0 else "{:>4}".format("-")
-            track = "{:>4}".format("{}°".format(int(aircraft.track))[:4]) if getattr(aircraft, "track", 0) and aircraft.track > 0 else "{:>4}".format("-")
-            squawk = "{:<4}".format(getattr(aircraft, "squawk", '-') or '-')
+            
+            # Distance: show one decimal place up to 99.9, then show as integer 100+
+            if getattr(aircraft, "distance", 0) and aircraft.distance > 0:
+                if aircraft.distance < 100:
+                    distance = "{:>4}".format("{:.1f}".format(aircraft.distance))
+                else:
+                    distance = "{:>3}+".format(int(aircraft.distance))[:4]
+            else:
+                distance = "{:>4}".format("-")
+            
+            # Track: show with degree symbol up to 999°, without symbol for 1000+
+            if getattr(aircraft, "track", 0) and aircraft.track > 0:
+                track_val = int(aircraft.track)
+                if track_val < 1000:
+                    track = "{:>3}°".format(track_val)
+                else:
+                    track = "{:>4}".format(track_val)
+            else:
+                track = "{:>4}".format("-")
+            
+            squawk = "{:<4}".format((getattr(aircraft, "squawk", '-') or '-')[:4])
             cols = [callsign, altitude, speed, distance, track, squawk]
             
             # Use black text on yellow background for selected row

@@ -121,33 +121,6 @@ def single_update():
     return utime.ticks_ms()
 
 
-def sweep_loop(step_delay_ms=30):
-    """
-    Continuous sweep loop. Call from REPL or main.
-    step_delay_ms: ms to sleep between steps (tune for appearance vs CPU)
-    """
-    # do an initial full redraw to ensure background & ring labels are present
-    aircraft_list = fetch_your_data()
-    if radar.radar_scope:
-        radar.radar_scope.draw_scope()
-        radar.radar_scope.draw_planes(aircraft_list, selected_hex=radar.selected_hex)  # full redraw once at startup
-    radar.data_table.draw(aircraft_list, status="OK", last_update_ticks_ms=utime.ticks_ms(), selected_hex=radar.selected_hex)
-
-    try:
-        while True:
-            now = utime.ticks_ms()
-            aircraft_list = fetch_your_data()
-            # refresh scope and planes
-            if radar.radar_scope:
-                radar.radar_scope.draw_planes(aircraft_list, selected_hex=radar.selected_hex)
-            # refresh the table with the same timestamp for a consistent UI
-            radar.data_table.draw(aircraft_list, status="OK", last_update_ticks_ms=now, selected_hex=radar.selected_hex)
-            utime.sleep_ms(step_delay_ms)
-    except KeyboardInterrupt:
-        # stop cleanly in REPL
-        print("Sweep stopped by user")
-
-
 def scope_loop(once=False):
     """
     Continuous scope loop. Call from REPL or main.

@@ -129,12 +129,19 @@ class DataTable:
             new_row_hex_cache[y_pos] = (aircraft.hex_code, is_selected)
             
             color = self.cfg.RED if aircraft.is_military else self.cfg.BRIGHT_GREEN
-            callsign = "{}".format(aircraft.callsign)[:8] if aircraft.callsign else aircraft.hex_code
-            altitude = "{}".format(aircraft.altitude) if isinstance(aircraft.altitude, int) and aircraft.altitude > 0 else "-"
-            speed = "{}".format(int(aircraft.speed))   if getattr(aircraft, "speed", 0) and aircraft.speed > 0 else "-"
-            distance = "{:.1f}".format(aircraft.distance) if getattr(aircraft, "distance", 0) and aircraft.distance > 0 else "-"
-            track = "{}°".format(int(aircraft.track)) if getattr(aircraft, "track", 0) and aircraft.track > 0 else "-"
-            squawk = "{}".format(getattr(aircraft, "squawk", '-') or '-')
+            # Format columns with appropriate widths
+            # CALL: 8 chars left-aligned
+            # ALT: 5 chars right-aligned (up to 99999 ft)
+            # SPD: 3 chars right-aligned (up to 999 kts)
+            # DIST: 4 chars right-aligned (up to 99.9 nm)
+            # TRK: 4 chars right-aligned (up to 999°)
+            # SQUAWK: 4 chars left-aligned
+            callsign = ("{:<8}".format(aircraft.callsign[:8]) if aircraft.callsign else "{:<8}".format(aircraft.hex_code[:8]))
+            altitude = "{:>5}".format(aircraft.altitude) if isinstance(aircraft.altitude, int) and aircraft.altitude > 0 else "{:>5}".format("-")
+            speed = "{:>3}".format(int(aircraft.speed)) if getattr(aircraft, "speed", 0) and aircraft.speed > 0 else "{:>3}".format("-")
+            distance = "{:>4}".format("{:.1f}".format(aircraft.distance)[:4]) if getattr(aircraft, "distance", 0) and aircraft.distance > 0 else "{:>4}".format("-")
+            track = "{:>4}".format("{}°".format(int(aircraft.track))[:4]) if getattr(aircraft, "track", 0) and aircraft.track > 0 else "{:>4}".format("-")
+            squawk = "{:<4}".format(getattr(aircraft, "squawk", '-') or '-')
             cols = [callsign, altitude, speed, distance, track, squawk]
             
             # Use black text on yellow background for selected row
@@ -142,7 +149,8 @@ class DataTable:
             bg_color = self.cfg.YELLOW if is_selected else self.cfg.BLACK
             
             for j, val in enumerate(cols):
-                text_str = str(val) + self.TEXT_PADDING
+                # Fields are now properly sized with formatting, no extra padding needed
+                text_str = val
                 cache_key = (col_positions[j], y_pos)
                 
                 # Draw if: text changed OR background was just updated (which cleared the text)

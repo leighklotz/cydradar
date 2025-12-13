@@ -8,13 +8,10 @@ except:
         return r | g | b
 
 class _cfg:
-    DUMP1090_URL='http://core.klotz.me:8080/aircraft.json'
-    LAT=37.428833
-    LON=-122.114667
+    DUMP1090_URL='http://www.example.com:8080/aircraft.json'
+    LAT=45.0
+    LON=-120.0
     RADIUS_NM = 10
-    TRAIL_MIN_LENGTH = 4
-    TRAIL_MAX_LENGTH = 18
-    TRAIL_MAX_SPEED = 600
     BLINK_MILITARY = True
     FETCH_INTERVAL = 5
     MAX_TABLE_ROWS = 8

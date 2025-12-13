@@ -35,8 +35,7 @@ class RadarScope:
         """Draw an aircraft marker, trail and callsign using CYD API directly."""
         # Draw yellow highlight for selected aircraft
         if is_selected:
-            # Draw larger yellow circle as highlight
-            self.fb.draw_circle(x, y, 5, self.cfg.YELLOW)
+            # Draw larger yellow circle as highlight (double circle for visibility)
             self.fb.draw_circle(x, y, 6, self.cfg.YELLOW)
         
         # filled circle for aircraft

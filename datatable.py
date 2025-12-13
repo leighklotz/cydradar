@@ -102,8 +102,9 @@ class DataTable:
             
             # Use black text on yellow background for selected row
             text_color = self.cfg.BLACK if is_selected else color
+            bg_color = self.cfg.YELLOW if is_selected else self.cfg.BLACK
             for j, val in enumerate(cols):
-                self.fb.draw_text(col_positions[j], y_pos, str(val)+'   ', self.table_font, text_color, self.cfg.YELLOW if is_selected else self.cfg.BLACK)
+                self.fb.draw_text(col_positions[j], y_pos, str(val)+'   ', self.table_font, text_color, bg_color)
         
         # Clear remaining rows if we have fewer aircraft than MAX_TABLE_ROWS
         if num_rows < self.cfg.MAX_TABLE_ROWS:

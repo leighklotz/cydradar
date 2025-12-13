@@ -33,6 +33,8 @@ class DataTable:
         # Text cache for write-through optimization
         self.text_cache = {}  # (x, y) -> text
         self.max_rows = 0  # Calculated dynamically
+        # Constants
+        self.TEXT_PADDING = '   '  # Padding added to text to clear old content
 
     def draw(self, aircraft_list, status, last_update_ticks_ms, selected_hex=None):
         """Render the table and status information."""
@@ -84,9 +86,9 @@ class DataTable:
         if self.compact:
             available_height = self.height - (start_y - self.y) - 4
         else:
-            # Reserve space for status footer
-            status_lines = 5
-            footer_height = status_lines * self.status_font_h + 8
+            # Calculate status footer height dynamically
+            status_info_lines = 5  # STATUS, CONTACTS, RANGE, INTERVAL, NEXT UPDATE
+            footer_height = status_info_lines * self.status_font_h + 8
             available_height = self.height - (start_y - self.y) - footer_height
         
         self.max_rows = max(1, int(available_height / row_h))
@@ -127,7 +129,7 @@ class DataTable:
             bg_color = self.cfg.YELLOW if is_selected else self.cfg.BLACK
             
             for j, val in enumerate(cols):
-                text_str = str(val) + '   '  # Add padding
+                text_str = str(val) + self.TEXT_PADDING
                 cache_key = (col_positions[j], y_pos)
                 
                 # Only draw if text changed or is selected (background changed)

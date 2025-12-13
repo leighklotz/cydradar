@@ -156,7 +156,7 @@ class DataTable:
             
             # Squawk: handle None/empty safely
             squawk_val = getattr(aircraft, "squawk", None)
-            if squawk_val:
+            if squawk_val is not None:
                 squawk = "{:<4}".format(str(squawk_val)[:4])
             else:
                 squawk = "{:<4}".format("-")

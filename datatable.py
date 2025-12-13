@@ -36,6 +36,7 @@ class DataTable:
         self.max_rows = 0  # Calculated dynamically
         # Constants
         self.TEXT_PADDING = '   '  # Padding added to text to clear old content
+        self.DEFAULT_ROW_STATE = (None, False)  # (hex_code, is_selected) for empty row
 
     def draw(self, aircraft_list, status, last_update_ticks_ms, selected_hex=None):
         """Render the table and status information."""
@@ -114,7 +115,7 @@ class DataTable:
             
             # Check if background needs to be updated
             # Only update if: hex_code changed at this y_pos OR selection state changed
-            old_state = self.row_hex_cache.get(y_pos, (None, False))
+            old_state = self.row_hex_cache.get(y_pos, self.DEFAULT_ROW_STATE)
             old_hex, old_selected = old_state
             needs_bg_update = (old_hex != aircraft.hex_code) or (old_selected != is_selected)
             

@@ -32,6 +32,7 @@ class DataTable:
         self.row_layout = []  # List of (hex_code, y_pos, row_height)
         # Text cache for write-through optimization
         self.text_cache = {}  # (x, y) -> text
+        self.row_hex_cache = {}  # y_pos -> (hex_code, is_selected) - tracks what's at each row
         self.max_rows = 0  # Calculated dynamically
         # Constants
         self.TEXT_PADDING = '   '  # Padding added to text to clear old content
@@ -99,6 +100,7 @@ class DataTable:
         
         # Track which positions we're drawing to
         new_text_cache = {}
+        new_row_hex_cache = {}
         
         for i, aircraft in enumerate(sorted_ac[:self.max_rows]):
             print(f"table: {i=} {aircraft.__dict__}")
@@ -107,13 +109,23 @@ class DataTable:
             # Store row layout for hit testing
             self.row_layout.append((aircraft.hex_code, y_pos, row_h))
             
-            # Draw yellow background for selected row
+            # Determine if this row needs background update
             is_selected = (selected_hex is not None and aircraft.hex_code == selected_hex)
-            if is_selected:
-                self.fb.fill_rectangle(self.x + 4, y_pos - 1, self.width - 8, row_h, self.cfg.YELLOW)
-            else:
-                # Clear background if not selected (to remove old highlighting)
-                self.fb.fill_rectangle(self.x + 4, y_pos - 1, self.width - 8, row_h, self.cfg.BLACK)
+            
+            # Check if background needs to be updated
+            # Only update if: hex_code changed at this y_pos OR selection state changed
+            old_state = self.row_hex_cache.get(y_pos, (None, False))
+            old_hex, old_selected = old_state
+            needs_bg_update = (old_hex != aircraft.hex_code) or (old_selected != is_selected)
+            
+            if needs_bg_update:
+                if is_selected:
+                    self.fb.fill_rectangle(self.x + 4, y_pos - 1, self.width - 8, row_h, self.cfg.YELLOW)
+                else:
+                    self.fb.fill_rectangle(self.x + 4, y_pos - 1, self.width - 8, row_h, self.cfg.BLACK)
+            
+            # Track what's at this row position
+            new_row_hex_cache[y_pos] = (aircraft.hex_code, is_selected)
             
             color = self.cfg.RED if aircraft.is_military else self.cfg.BRIGHT_GREEN
             callsign = "{}".format(aircraft.callsign)[:8] if aircraft.callsign else aircraft.hex_code
@@ -132,8 +144,8 @@ class DataTable:
                 text_str = str(val) + self.TEXT_PADDING
                 cache_key = (col_positions[j], y_pos)
                 
-                # Only draw if text changed or is selected (background changed)
-                if is_selected or cache_key not in self.text_cache or self.text_cache[cache_key] != text_str:
+                # Draw if: text changed OR background was just updated (which cleared the text)
+                if needs_bg_update or cache_key not in self.text_cache or self.text_cache[cache_key] != text_str:
                     self.fb.draw_text(col_positions[j], y_pos, text_str, self.table_font, text_color, bg_color)
                 
                 new_text_cache[cache_key] = text_str
@@ -144,8 +156,9 @@ class DataTable:
             clear_height = (self.max_rows - num_rows) * row_h
             self.fb.fill_rectangle(self.x + 4, clear_y, self.width - 8, clear_height, self.cfg.BLACK)
         
-        # Update cache
+        # Update caches
         self.text_cache = new_text_cache
+        self.row_hex_cache = new_row_hex_cache
 
         if not self.compact:
             # footer status
@@ -175,6 +188,7 @@ class DataTable:
     def clear_cache(self):
         """Clear the text cache, called when screen is cleared."""
         self.text_cache = {}
+        self.row_hex_cache = {}
 
     def pick_hex(self, x, y):
         """

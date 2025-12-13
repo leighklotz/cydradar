@@ -14,7 +14,11 @@ It fetches aircraft data from a local dump1090 instance (or similar) and visuali
 *   **Military Aircraft Identification:** Optionally highlights military aircraft in red.
 *   **Configurable Parameters:** Adjustable range, display colors, and other settings.
 *   **MicroPython Compatibility:** Specifically designed for MicroPython on ESP32 with the CYD library.
-*   **Touch screen:** Pressing the touch screen switches layouts.
+*   **Touchscreen Controls:** 
+    *   Tap table header to switch layouts
+    *   Tap aircraft row to select/deselect (yellow highlight)
+    *   Tap radar scope to switch layouts
+    *   Selected aircraft show yellow highlight in both table and scope
 
 ## Hardware Requirements
 
@@ -50,6 +54,33 @@ The `cfg.py` file contains configurable parameters:
 *   `MAX_TABLE_ROWS`: The maximum number of rows to display in the aircraft table.
 *   `MIL_PREFIX_LIST`: List of hex prefixes to identify military aircraft.
 *   Color constants to customize the display.
+
+## Usage
+
+### Touchscreen Controls
+
+The display supports three layout modes that can be cycled through by tapping the table header:
+
+1. **Mode 0:** Large radar scope with compact table below
+2. **Mode 1:** Split screen with medium scope and full table
+3. **Mode 2:** Full-screen table only
+
+**Touch Interactions:**
+
+*   **Tap table header (title/column headers):** Switch to next layout mode
+*   **Tap aircraft row:** Select aircraft (yellow highlight in table and scope)
+*   **Tap selected aircraft row again:** Deselect aircraft
+*   **Tap empty table area:** Deselect current aircraft
+*   **Tap radar scope area:** Switch to next layout mode (when scope is visible)
+
+**Selection Behavior:**
+
+*   Only one aircraft can be selected at a time
+*   Selected aircraft displays with:
+    *   Yellow background in the data table with black text
+    *   Yellow highlight ring around the blip on the radar scope
+    *   Callsign label always visible (even if previously hidden)
+*   Selection persists across layout changes and data updates
 
 ## About ADSB JSON
 - See [docs/ADSB](docs/ADSB.md)

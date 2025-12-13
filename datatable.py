@@ -28,9 +28,14 @@ class DataTable:
         self.table_font_h = getattr(table_font, "height", config.DEFAULT_FONT_HEIGHT)
         self.status_font_h = getattr(status_font, "height", config.DEFAULT_FONT_HEIGHT)
         self.compact = compact
+        # Store row layout for hit testing
+        self.row_layout = []  # List of (hex_code, y_pos, row_height)
 
-    def draw(self, aircraft_list, status, last_update_ticks_ms):
+    def draw(self, aircraft_list, status, last_update_ticks_ms, selected_hex=None):
         """Render the table and status information."""
+        # Clear row layout for this draw
+        self.row_layout = []
+        
         # border
         # print(f"self.fb.draw_rectangle({self.x=}, {self.y=}, {self.width=}, {self.height=}, {self.cfg.BRIGHT_GREEN=})")
         self.fb.draw_rectangle(self.x, self.y, self.width, self.height, self.cfg.BRIGHT_GREEN)
@@ -43,7 +48,7 @@ class DataTable:
             self.fb.draw_text(title_x, self.y + 4, title, self.table_font, self.cfg.AMBER, self.cfg.BLACK)
         else:
             title_x = self.x + (self.width // 2) - (len(title) * 8 // 2)
-            self.fb.draw_text8x8(title_x, self.y + 4, title, AMBER, background=self.cfg.BLACK)
+            self.fb.draw_text8x8(title_x, self.y + 4, title, self.cfg.AMBER, background=self.cfg.BLACK)
             print(f"self.fb.draw_text8x8({title_x=}, {self.y=} + 4, {title=}, self.cfg.AMBER, background=self.cfg.BLACK)")
 
         # headers and column positions
@@ -73,9 +78,19 @@ class DataTable:
         start_y = headers_y + self.table_font_h + 4
         row_h = self.table_font_h + 2
         y_pos = start_y
-        for i, aircraft in enumerate(sorted_ac[: self.cfg.MAX_TABLE_ROWS]):
+        num_rows = min(len(sorted_ac), self.cfg.MAX_TABLE_ROWS)
+        for i, aircraft in enumerate(sorted_ac[:self.cfg.MAX_TABLE_ROWS]):
             print(f"table: {i=} {aircraft.__dict__}")
             y_pos = start_y + i * row_h
+            
+            # Store row layout for hit testing
+            self.row_layout.append((aircraft.hex_code, y_pos, row_h))
+            
+            # Draw yellow background for selected row
+            is_selected = (selected_hex is not None and aircraft.hex_code == selected_hex)
+            if is_selected:
+                self.fb.fill_rectangle(self.x + 4, y_pos - 1, self.width - 8, row_h, self.cfg.YELLOW)
+            
             color = self.cfg.RED if aircraft.is_military else self.cfg.BRIGHT_GREEN
             callsign = "{}".format(aircraft.callsign)[:8] if aircraft.callsign else aircraft.hex_code
             altitude = "{}".format(aircraft.altitude) if isinstance(aircraft.altitude, int) and aircraft.altitude > 0 else "-"
@@ -84,12 +99,17 @@ class DataTable:
             track = "{}°".format(int(aircraft.track)) if getattr(aircraft, "track", 0) and aircraft.track > 0 else "-"
             squawk = "{}".format(getattr(aircraft, "squawk", '-') or '-')
             cols = [callsign, altitude, speed, distance, track, squawk]
+            
+            # Use black text on yellow background for selected row
+            text_color = self.cfg.BLACK if is_selected else color
             for j, val in enumerate(cols):
-                self.fb.draw_text(col_positions[j], y_pos, str(val)+'   ', self.table_font, color, self.cfg.BLACK)
-        else:
-            if i < self.cfg.MAX_TABLE_ROWS-1:
-                y_pos += row_h
-                self.fb.fill_rectangle(5, y_pos, self.width, row_h-5, self.cfg.BLACK)
+                self.fb.draw_text(col_positions[j], y_pos, str(val)+'   ', self.table_font, text_color, self.cfg.YELLOW if is_selected else self.cfg.BLACK)
+        
+        # Clear remaining rows if we have fewer aircraft than MAX_TABLE_ROWS
+        if num_rows < self.cfg.MAX_TABLE_ROWS:
+            clear_y = start_y + num_rows * row_h
+            clear_height = (self.cfg.MAX_TABLE_ROWS - num_rows) * row_h
+            self.fb.fill_rectangle(self.x + 4, clear_y, self.width - 8, clear_height, self.cfg.BLACK)
 
         if not self.compact:
             # footer status
@@ -115,3 +135,19 @@ class DataTable:
                     self.fb.draw_text(self.x + 6, status_y + i * self.status_font_h, s, self.status_font, color, self.cfg.BLACK)
                 else:
                     self.fb.draw_text8x8(self.x + 6, status_y + i * self.status_font_h, s, color, background=self.cfg.BLACK)
+
+    def pick_hex(self, x, y):
+        """
+        Hit-test to find which aircraft row was tapped.
+        Returns the hex_code of the aircraft, or None if no row was hit.
+        """
+        # Check if touch is within table bounds
+        if x < self.x or x > self.x + self.width or y < self.y or y > self.y + self.height:
+            return None
+        
+        # Check each row
+        for hex_code, row_y, row_h in self.row_layout:
+            if y >= row_y and y < row_y + row_h:
+                return hex_code
+        
+        return None

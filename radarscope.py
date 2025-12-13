@@ -31,8 +31,14 @@ class RadarScope:
             return int(x), int(y)
         return None
 
-    def draw_aircraft(self, aircraft, x, y, pip_color, track_color, show_label=True):
+    def draw_aircraft(self, aircraft, x, y, pip_color, track_color, show_label=True, is_selected=False):
         """Draw an aircraft marker, trail and callsign using CYD API directly."""
+        # Draw yellow highlight for selected aircraft
+        if is_selected:
+            # Draw larger yellow circle as highlight
+            self.fb.draw_circle(x, y, 5, self.cfg.YELLOW)
+            self.fb.draw_circle(x, y, 6, self.cfg.YELLOW)
+        
         # filled circle for aircraft
         if show_label:
             self.fb.fill_circle(x, y, 3, pip_color)
@@ -52,8 +58,8 @@ class RadarScope:
             self.fb.draw_line(tx, ty, x, y, track_color)
 
         # callsign - prefer draw_text with font if provided, otherwise draw_text8x8
-        # todo: we should draw the callsign when it's first seen, even if show_label is off
-        if show_label:
+        # Force show label for selected aircraft, or when first seen
+        if show_label or is_selected:
             callsign = aircraft.callsign
             if callsign is not None: 
                 if self.font is not None:
@@ -63,7 +69,7 @@ class RadarScope:
                     # draw_text8x8(x, y, text, color, background=...)
                     self.fb.draw_text8x8(x + 8, y - 12, callsign, pip_color, background=self.cfg.BLACK)
 
-    def draw_planes(self, aircraft_list, previous_aircraft=None):
+    def draw_planes(self, aircraft_list, previous_aircraft=None, selected_hex=None):
         """Draw planes"""
 
         # blink state for military blips
@@ -74,11 +80,12 @@ class RadarScope:
             if pos:
                 x, y = pos
                 show_label = previous_aircraft is None or aircraft.hex_code not in previous_aircraft
+                is_selected = (selected_hex is not None and aircraft.hex_code == selected_hex)
                 if aircraft.is_military:
                     if not self.cfg.BLINK_MILITARY or blink_state:
-                        self.draw_aircraft(aircraft, x, y, self.cfg.RED, self.cfg.DIM_GREEN, show_label=show_label)
+                        self.draw_aircraft(aircraft, x, y, self.cfg.RED, self.cfg.DIM_GREEN, show_label=show_label, is_selected=is_selected)
                 else:
-                    self.draw_aircraft(aircraft, x, y, self.cfg.BRIGHT_GREEN, self.cfg.DIM_GREEN, show_label=show_label)
+                    self.draw_aircraft(aircraft, x, y, self.cfg.BRIGHT_GREEN, self.cfg.DIM_GREEN, show_label=show_label, is_selected=is_selected)
 
     def draw_scope(self):
         """Draw radar rings, crosshairs and aircraft. Does not clear entire screen."""

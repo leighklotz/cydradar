@@ -35,6 +35,7 @@ class Radar:
         self.radar_scope = None
         self.data_table = None
         self.style = 0
+        self.selected_hex = None  # Currently selected aircraft
 
     def create_widgets(self, style=1):
         """
@@ -83,8 +84,9 @@ class Radar:
         """
         now = utime.ticks_ms()
         if self.radar_scope:
-            self.radar_scope.draw(aircraft_list)
-        self.data_table.draw(aircraft_list, status="OK", last_update_ticks_ms=now)
+            self.radar_scope.draw_scope()
+            self.radar_scope.draw_planes(aircraft_list, selected_hex=self.selected_hex)
+        self.data_table.draw(aircraft_list, status="OK", last_update_ticks_ms=now, selected_hex=self.selected_hex)
 
     def next_layout(self):
         s = (self.style + 1) % 3
@@ -127,18 +129,19 @@ def sweep_loop(step_delay_ms=30):
     # do an initial full redraw to ensure background & ring labels are present
     aircraft_list = fetch_your_data()
     if radar.radar_scope:
-        radar.radar_scope.draw(aircraft_list, sweep=False)  # full redraw once at startup
-    radar.data_table.draw(aircraft_list, status="OK", last_update_ticks_ms=utime.ticks_ms())
+        radar.radar_scope.draw_scope()
+        radar.radar_scope.draw_planes(aircraft_list, selected_hex=radar.selected_hex)  # full redraw once at startup
+    radar.data_table.draw(aircraft_list, status="OK", last_update_ticks_ms=utime.ticks_ms(), selected_hex=radar.selected_hex)
 
     try:
         while True:
             now = utime.ticks_ms()
             aircraft_list = fetch_your_data()
-            # advance by one segment (show pip labels when illuminated)
+            # refresh scope and planes
             if radar.radar_scope:
-                radar.radar_scope.step(aircraft_list)
+                radar.radar_scope.draw_planes(aircraft_list, selected_hex=radar.selected_hex)
             # refresh the table with the same timestamp for a consistent UI
-            radar.data_table.draw(aircraft_list, status="OK", last_update_ticks_ms=now)
+            radar.data_table.draw(aircraft_list, status="OK", last_update_ticks_ms=now, selected_hex=radar.selected_hex)
             utime.sleep_ms(step_delay_ms)
     except KeyboardInterrupt:
         # stop cleanly in REPL
@@ -158,18 +161,26 @@ def scope_loop(once=False):
         aircraft_list = fetch_your_data()
         now = utime.ticks_ms()
         if x != 0 and y != 0:
-            print("clearing screen")
-            fb.clear(_cfg.BLACK)
-            print("next layout")
-            radar.next_layout()
-            if radar.radar_scope:
-                radar.radar_scope.draw_scope()
-            start = now
-            previous_aircraft = set()
+            # Check if touch is on data table
+            picked_hex = radar.data_table.pick_hex(x, y)
+            if picked_hex:
+                # Touch is on a table row - select that aircraft
+                print(f"Selected aircraft: {picked_hex}")
+                radar.selected_hex = picked_hex
+            else:
+                # Touch is elsewhere (scope area) - toggle layout
+                print("clearing screen")
+                fb.clear(_cfg.BLACK)
+                print("next layout")
+                radar.next_layout()
+                if radar.radar_scope:
+                    radar.radar_scope.draw_scope()
+                start = now
+                previous_aircraft = set()
 
         if radar.radar_scope:
-            radar.radar_scope.draw_planes(aircraft_list, previous_aircraft)
-        radar.data_table.draw(aircraft_list, status="OK", last_update_ticks_ms=now)
+            radar.radar_scope.draw_planes(aircraft_list, previous_aircraft, selected_hex=radar.selected_hex)
+        radar.data_table.draw(aircraft_list, status="OK", last_update_ticks_ms=now, selected_hex=radar.selected_hex)
         if once:
             break
         previous_aircraft.update(

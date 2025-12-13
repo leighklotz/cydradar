@@ -133,7 +133,7 @@ class DataTable:
             # ALT: 5 chars right-aligned (up to 99999 ft)
             # SPD: 3 chars right-aligned (up to 999 kts)
             # DIST: 4 chars right-aligned (up to 99.9 nm, or 99+ for 100+)
-            # TRK: 4 chars right-aligned (up to 999°, or 999 for 1000+)
+            # TRK: 4 chars right-aligned (0-359°)
             # SQUAWK: 4 chars left-aligned
             callsign = ("{:<8}".format(aircraft.callsign[:8]) if aircraft.callsign else "{:<8}".format(aircraft.hex_code[:8]))
             altitude = "{:>5}".format(aircraft.altitude) if isinstance(aircraft.altitude, int) and aircraft.altitude > 0 else "{:>5}".format("-")
@@ -148,17 +148,19 @@ class DataTable:
             else:
                 distance = "{:>4}".format("-")
             
-            # Track: show with degree symbol up to 999°, without symbol for 1000+
+            # Track: show with degree symbol (track is 0-359)
             if getattr(aircraft, "track", 0) and aircraft.track > 0:
-                track_val = int(aircraft.track)
-                if track_val < 1000:
-                    track = "{:>3}°".format(track_val)
-                else:
-                    track = "{:>4}".format(track_val)
+                track = "{:>3}°".format(int(aircraft.track))
             else:
                 track = "{:>4}".format("-")
             
-            squawk = "{:<4}".format((getattr(aircraft, "squawk", '-') or '-')[:4])
+            # Squawk: handle None/empty safely
+            squawk_val = getattr(aircraft, "squawk", None)
+            if squawk_val:
+                squawk = "{:<4}".format(str(squawk_val)[:4])
+            else:
+                squawk = "{:<4}".format("-")
+            
             cols = [callsign, altitude, speed, distance, track, squawk]
             
             # Use black text on yellow background for selected row

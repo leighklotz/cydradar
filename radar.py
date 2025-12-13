@@ -36,6 +36,7 @@ class Radar:
         self.data_table = None
         self.style = 0
         self.selected_hex = None  # Currently selected aircraft
+        self.just_selected_hex = None  # Aircraft that was just tapped (to show circle)
 
     def create_widgets(self, style=1):
         """
@@ -85,12 +86,19 @@ class Radar:
         now = utime.ticks_ms()
         if self.radar_scope:
             self.radar_scope.draw_scope()
-            self.radar_scope.draw_planes(aircraft_list, selected_hex=self.selected_hex)
+            self.radar_scope.draw_planes(aircraft_list, selected_hex=self.selected_hex, just_selected_hex=self.just_selected_hex)
         self.data_table.draw(aircraft_list, status="OK", last_update_ticks_ms=now, selected_hex=self.selected_hex)
+        # Clear just_selected after first draw
+        self.just_selected_hex = None
 
     def next_layout(self):
         s = (self.style + 1) % 3
         self.create_widgets(s)
+        # Clear selection when layout changes
+        self.selected_hex = None
+        self.just_selected_hex = None
+        # Clear text cache when layout changes
+        self.data_table.clear_cache()
 
 # initialize display
 cyd = CYD(display_width=240, display_height=320, rotation=180)
@@ -151,16 +159,19 @@ def scope_loop(once=False):
                     # Touch in table area but not on a row - deselect
                     print("Deselecting aircraft")
                     radar.selected_hex = None
+                    radar.just_selected_hex = None
                 elif picked_hex:
                     # Touch is on a table row - toggle selection
                     if radar.selected_hex == picked_hex:
                         # Same aircraft - deselect
                         print(f"Deselecting aircraft: {picked_hex}")
                         radar.selected_hex = None
+                        radar.just_selected_hex = None
                     else:
-                        # Different aircraft - select
+                        # Different aircraft - select and mark as just selected
                         print(f"Selected aircraft: {picked_hex}")
                         radar.selected_hex = picked_hex
+                        radar.just_selected_hex = picked_hex
                 elif radar.radar_scope:
                     # Touch is on radar scope area - toggle layout
                     print("scope touch - changing layout")
@@ -172,8 +183,10 @@ def scope_loop(once=False):
                     previous_aircraft = set()
 
         if radar.radar_scope:
-            radar.radar_scope.draw_planes(aircraft_list, previous_aircraft, selected_hex=radar.selected_hex)
+            radar.radar_scope.draw_planes(aircraft_list, previous_aircraft, selected_hex=radar.selected_hex, just_selected_hex=radar.just_selected_hex)
         radar.data_table.draw(aircraft_list, status="OK", last_update_ticks_ms=now, selected_hex=radar.selected_hex)
+        # Clear just_selected after first draw
+        radar.just_selected_hex = None
         if once:
             break
         previous_aircraft.update(

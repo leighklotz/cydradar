@@ -30,6 +30,9 @@ class DataTable:
         self.compact = compact
         # Store row layout for hit testing
         self.row_layout = []  # List of (hex_code, y_pos, row_height)
+        # Text cache for write-through optimization
+        self.text_cache = {}  # (x, y) -> text
+        self.max_rows = 0  # Calculated dynamically
 
     def draw(self, aircraft_list, status, last_update_ticks_ms, selected_hex=None):
         """Render the table and status information."""
@@ -73,13 +76,29 @@ class DataTable:
         # separator line
         self.fb.draw_line(self.x + 4, headers_y + self.table_font_h, self.x + self.width - 4, headers_y + self.table_font_h, self.cfg.DIM_GREEN)
 
-        # rows (sorted by distance)
-        sorted_ac = sorted(aircraft_list, key=lambda a: getattr(a, "distance", 9999))
+        # Calculate maximum rows that can fit
         start_y = headers_y + self.table_font_h + 4
         row_h = self.table_font_h + 2
-        y_pos = start_y
-        num_rows = min(len(sorted_ac), self.cfg.MAX_TABLE_ROWS)
-        for i, aircraft in enumerate(sorted_ac[:self.cfg.MAX_TABLE_ROWS]):
+        
+        # Calculate available space for rows
+        if self.compact:
+            available_height = self.height - (start_y - self.y) - 4
+        else:
+            # Reserve space for status footer
+            status_lines = 5
+            footer_height = status_lines * self.status_font_h + 8
+            available_height = self.height - (start_y - self.y) - footer_height
+        
+        self.max_rows = max(1, int(available_height / row_h))
+        
+        # rows (sorted by distance)
+        sorted_ac = sorted(aircraft_list, key=lambda a: getattr(a, "distance", 9999))
+        num_rows = min(len(sorted_ac), self.max_rows)
+        
+        # Track which positions we're drawing to
+        new_text_cache = {}
+        
+        for i, aircraft in enumerate(sorted_ac[:self.max_rows]):
             print(f"table: {i=} {aircraft.__dict__}")
             y_pos = start_y + i * row_h
             
@@ -90,6 +109,9 @@ class DataTable:
             is_selected = (selected_hex is not None and aircraft.hex_code == selected_hex)
             if is_selected:
                 self.fb.fill_rectangle(self.x + 4, y_pos - 1, self.width - 8, row_h, self.cfg.YELLOW)
+            else:
+                # Clear background if not selected (to remove old highlighting)
+                self.fb.fill_rectangle(self.x + 4, y_pos - 1, self.width - 8, row_h, self.cfg.BLACK)
             
             color = self.cfg.RED if aircraft.is_military else self.cfg.BRIGHT_GREEN
             callsign = "{}".format(aircraft.callsign)[:8] if aircraft.callsign else aircraft.hex_code
@@ -103,14 +125,25 @@ class DataTable:
             # Use black text on yellow background for selected row
             text_color = self.cfg.BLACK if is_selected else color
             bg_color = self.cfg.YELLOW if is_selected else self.cfg.BLACK
+            
             for j, val in enumerate(cols):
-                self.fb.draw_text(col_positions[j], y_pos, str(val)+'   ', self.table_font, text_color, bg_color)
+                text_str = str(val) + '   '  # Add padding
+                cache_key = (col_positions[j], y_pos)
+                
+                # Only draw if text changed or is selected (background changed)
+                if is_selected or cache_key not in self.text_cache or self.text_cache[cache_key] != text_str:
+                    self.fb.draw_text(col_positions[j], y_pos, text_str, self.table_font, text_color, bg_color)
+                
+                new_text_cache[cache_key] = text_str
         
-        # Clear remaining rows if we have fewer aircraft than MAX_TABLE_ROWS
-        if num_rows < self.cfg.MAX_TABLE_ROWS:
+        # Clear remaining rows
+        if num_rows < self.max_rows:
             clear_y = start_y + num_rows * row_h
-            clear_height = (self.cfg.MAX_TABLE_ROWS - num_rows) * row_h
+            clear_height = (self.max_rows - num_rows) * row_h
             self.fb.fill_rectangle(self.x + 4, clear_y, self.width - 8, clear_height, self.cfg.BLACK)
+        
+        # Update cache
+        self.text_cache = new_text_cache
 
         if not self.compact:
             # footer status
@@ -136,6 +169,10 @@ class DataTable:
                     self.fb.draw_text(self.x + 6, status_y + i * self.status_font_h, s, self.status_font, color, self.cfg.BLACK)
                 else:
                     self.fb.draw_text8x8(self.x + 6, status_y + i * self.status_font_h, s, color, background=self.cfg.BLACK)
+    
+    def clear_cache(self):
+        """Clear the text cache, called when screen is cleared."""
+        self.text_cache = {}
 
     def pick_hex(self, x, y):
         """

@@ -134,22 +134,42 @@ def scope_loop(once=False):
         aircraft_list = fetch_your_data()
         now = utime.ticks_ms()
         if x != 0 and y != 0:
-            # Check if touch is on data table
-            picked_hex = radar.data_table.pick_hex(x, y)
-            if picked_hex:
-                # Touch is on a table row - select that aircraft
-                print(f"Selected aircraft: {picked_hex}")
-                radar.selected_hex = picked_hex
-            else:
-                # Touch is elsewhere (scope area) - toggle layout
-                print("clearing screen")
+            # Check if touch is on data table header (for layout change)
+            if radar.data_table.is_header_touch(x, y):
+                # Touch is on table header - toggle layout
+                print("header touch - changing layout")
                 fb.clear(_cfg.BLACK)
-                print("next layout")
                 radar.next_layout()
                 if radar.radar_scope:
                     radar.radar_scope.draw_scope()
                 start = now
                 previous_aircraft = set()
+            else:
+                # Check if touch is on a table row or in table area
+                picked_hex = radar.data_table.pick_hex(x, y)
+                if picked_hex == 'deselect':
+                    # Touch in table area but not on a row - deselect
+                    print("Deselecting aircraft")
+                    radar.selected_hex = None
+                elif picked_hex:
+                    # Touch is on a table row - toggle selection
+                    if radar.selected_hex == picked_hex:
+                        # Same aircraft - deselect
+                        print(f"Deselecting aircraft: {picked_hex}")
+                        radar.selected_hex = None
+                    else:
+                        # Different aircraft - select
+                        print(f"Selected aircraft: {picked_hex}")
+                        radar.selected_hex = picked_hex
+                elif radar.radar_scope:
+                    # Touch is on radar scope area - toggle layout
+                    print("scope touch - changing layout")
+                    fb.clear(_cfg.BLACK)
+                    radar.next_layout()
+                    if radar.radar_scope:
+                        radar.radar_scope.draw_scope()
+                    start = now
+                    previous_aircraft = set()
 
         if radar.radar_scope:
             radar.radar_scope.draw_planes(aircraft_list, previous_aircraft, selected_hex=radar.selected_hex)

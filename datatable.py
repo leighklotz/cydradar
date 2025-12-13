@@ -141,6 +141,7 @@ class DataTable:
         """
         Hit-test to find which aircraft row was tapped.
         Returns the hex_code of the aircraft, or None if no row was hit.
+        Returns 'deselect' if touched in table area but not on a row (to deselect).
         """
         # Check if touch is within table bounds
         if x < self.x or x > self.x + self.width or y < self.y or y > self.y + self.height:
@@ -151,4 +152,28 @@ class DataTable:
             if y >= row_y and y < row_y + row_h:
                 return hex_code
         
+        # Touch is in table but not on a row - signal deselect
+        if len(self.row_layout) > 0:
+            # Only return 'deselect' if touch is in the data area (below first row)
+            first_row_y = self.row_layout[0][1] if self.row_layout else self.y
+            if y >= first_row_y:
+                return 'deselect'
+        
         return None
+    
+    def is_header_touch(self, x, y):
+        """
+        Check if touch is in the header area (title and column headers).
+        Returns True if in header area (where layout change should happen).
+        """
+        # Check if touch is within table bounds
+        if x < self.x or x > self.x + self.width or y < self.y or y > self.y + self.height:
+            return False
+        
+        # Header area is from table top to just before first data row
+        if len(self.row_layout) > 0:
+            first_row_y = self.row_layout[0][1]
+            return y < first_row_y
+        
+        # If no rows, entire table is header area
+        return True

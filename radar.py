@@ -138,19 +138,14 @@ def scope_loop(once=False):
     if radar.radar_scope:
         radar.radar_scope.draw_scope()
     
-    # Track touch from sleep polling
-    pending_touch = (0, 0)
+    # Initialize touch coordinates
+    x, y = 0, 0
     
     while True:
-        # Use pending touch if available, otherwise read new touch
-        if pending_touch[0] != 0 and pending_touch[1] != 0:
-            x, y = pending_touch
-            pending_touch = (0, 0)  # Clear pending touch
-        else:
-            x, y = cyd.touches()
-        
         aircraft_list = fetch_your_data()
         now = utime.ticks_ms()
+        
+        # Process touch event if we have one
         if x != 0 and y != 0:
             # Check if touch is on data table header (for layout change)
             if radar.data_table.is_header_touch(x, y):
@@ -205,6 +200,8 @@ def scope_loop(once=False):
         
         # Sleep with touch polling for better responsiveness
         # Break sleep into 100ms chunks and check for touches
+        # Read touch only here at the end of the loop
+        x, y = 0, 0  # Reset touch
         sleep_remaining = 1000
         sleep_chunk = 100
         while sleep_remaining > 0:
@@ -212,10 +209,9 @@ def scope_loop(once=False):
             sleep_remaining -= sleep_chunk
             
             # Check for touch during sleep
-            touch_x, touch_y = cyd.touches()
-            if touch_x != 0 and touch_y != 0:
-                # Touch detected - save it and exit sleep early to handle it
-                pending_touch = (touch_x, touch_y)
+            x, y = cyd.touches()
+            if x != 0 and y != 0:
+                # Touch detected - exit sleep early to handle it in next iteration
                 break
 
 

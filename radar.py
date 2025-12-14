@@ -137,8 +137,18 @@ def scope_loop(once=False):
     previous_aircraft = set()
     if radar.radar_scope:
         radar.radar_scope.draw_scope()
+    
+    # Track touch from sleep polling
+    pending_touch = (0, 0)
+    
     while True:
-        x, y = cyd.touches()
+        # Use pending touch if available, otherwise read new touch
+        if pending_touch[0] != 0 and pending_touch[1] != 0:
+            x, y = pending_touch
+            pending_touch = (0, 0)  # Clear pending touch
+        else:
+            x, y = cyd.touches()
+        
         aircraft_list = fetch_your_data()
         now = utime.ticks_ms()
         if x != 0 and y != 0:
@@ -202,9 +212,10 @@ def scope_loop(once=False):
             sleep_remaining -= sleep_chunk
             
             # Check for touch during sleep
-            x, y = cyd.touches()
-            if x != 0 and y != 0:
-                # Touch detected - exit sleep early to handle it
+            touch_x, touch_y = cyd.touches()
+            if touch_x != 0 and touch_y != 0:
+                # Touch detected - save it and exit sleep early to handle it
+                pending_touch = (touch_x, touch_y)
                 break
 
 

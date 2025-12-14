@@ -61,13 +61,15 @@ class RadarScope:
         # Draw label when: first seen OR when selection circle is being drawn (i.e., just tapped)
         if show_label or draw_selection_circle:
             callsign = aircraft.callsign
-            if callsign is not None: 
+            if callsign is not None:
+                # Use yellow for newly-tracked (selected) planes, green for newly-heard ones
+                label_color = self.cfg.YELLOW if draw_selection_circle else pip_color
                 if self.font is not None:
                     # draw_text(x, y, text, font, color, background)
-                    self.fb.draw_text(x + 8, y - 12, callsign, self.font, pip_color, self.cfg.BLACK)
+                    self.fb.draw_text(x + 8, y - 12, callsign, self.font, label_color, self.cfg.BLACK)
                 else:
                     # draw_text8x8(x, y, text, color, background=...)
-                    self.fb.draw_text8x8(x + 8, y - 12, callsign, pip_color, background=self.cfg.BLACK)
+                    self.fb.draw_text8x8(x + 8, y - 12, callsign, label_color, background=self.cfg.BLACK)
 
     def draw_planes(self, aircraft_list, previous_aircraft=None, selected_hex=None, just_selected_hex=None):
         """Draw planes

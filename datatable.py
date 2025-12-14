@@ -9,6 +9,51 @@ from cfg import _cfg
 
 MEMORY_DEBUG=True
 
+class DrawState:
+    """Encapsulates all drawing state for the data table."""
+    def __init__(self):
+        # Row layout for hit testing: (hex_code, y_pos, row_height)
+        self.rows = []
+        # Text cache for write-through optimization: (x, y) -> text
+        self.text = {}
+        # Row state tracking: y_pos -> (hex_code, is_selected)
+        self.row_state = {}
+        # Calculated maximum rows that can fit
+        self.max_rows = 0
+    
+    def clear(self):
+        """Clear all state."""
+        self.rows = []
+        self.text = {}
+        self.row_state = {}
+    
+    def get_row_state(self, y_pos, default=(None, False)):
+        """Get the state of a row at given y position."""
+        return self.row_state.get(y_pos, default)
+    
+    def set_row_state(self, y_pos, hex_code, is_selected):
+        """Set the state of a row at given y position."""
+        self.row_state[y_pos] = (hex_code, is_selected)
+    
+    def add_row(self, hex_code, y_pos, row_height):
+        """Add a row to the layout."""
+        self.rows.append((hex_code, y_pos, row_height))
+    
+    def find_row(self, y):
+        """Find which row contains the given y coordinate."""
+        for hex_code, row_y, row_h in self.rows:
+            if y >= (row_y - 1) and y < (row_y - 1 + row_h):
+                return hex_code
+        return None
+    
+    def get_text(self, x, y):
+        """Get cached text at position."""
+        return self.text.get((x, y))
+    
+    def set_text(self, x, y, text):
+        """Set cached text at position."""
+        self.text[(x, y)] = text
+
 class DataTable:
     """Aircraft data table component using CYD display primitives."""
     def __init__(self, fb, x, y, width, height,
@@ -32,19 +77,13 @@ class DataTable:
         self.table_font_h = getattr(table_font, "height", config.DEFAULT_FONT_HEIGHT)
         self.status_font_h = getattr(status_font, "height", config.DEFAULT_FONT_HEIGHT)
         self.compact = compact
-        # Store row layout for hit testing
-        self.row_layout = []  # List of (hex_code, y_pos, row_height)
-        # Text cache for write-through optimization
-        self.text_cache = {}  # (x, y) -> text
-        self.row_hex_cache = {}  # y_pos -> (hex_code, is_selected) - tracks what's at each row
-        self.max_rows = 0  # Calculated dynamically
-        # Constants
-        self.DEFAULT_ROW_STATE = (None, False)  # (hex_code, is_selected) for empty row
+        # Consolidated state management
+        self.state = DrawState()
 
     def draw(self, aircraft_list, status, last_update_ticks_ms, selected_hex=None):
         """Render the table and status information."""
         # Clear row layout for this draw
-        self.row_layout = []
+        self.state.rows = []
         
         # border
         # print(f"self.fb.draw_rectangle({self.x=}, {self.y=}, {self.width=}, {self.height=}, {self.cfg.BRIGHT_GREEN=})")
@@ -96,30 +135,29 @@ class DataTable:
             footer_height = status_info_lines * self.status_font_h + 8
             available_height = self.height - (start_y - self.y) - footer_height
         
-        self.max_rows = max(1, int(available_height / row_h))
+        self.state.max_rows = max(1, int(available_height / row_h))
         
         # rows (sorted by distance)
         sorted_ac = sorted(aircraft_list, key=lambda a: getattr(a, "distance", 9999))
-        num_rows = min(len(sorted_ac), self.max_rows)
+        num_rows = min(len(sorted_ac), self.state.max_rows)
         
         # Track which positions we're drawing to
-        new_text_cache = {}
-        new_row_hex_cache = {}
+        new_text = {}
+        new_row_state = {}
         
-        for i, aircraft in enumerate(sorted_ac[:self.max_rows]):
+        for i, aircraft in enumerate(sorted_ac[:self.state.max_rows]):
             print(f"table: {i=} {aircraft.__dict__}")
             y_pos = start_y + i * row_h
             
             # Store row layout for hit testing
-            self.row_layout.append((aircraft.hex_code, y_pos, row_h))
+            self.state.add_row(aircraft.hex_code, y_pos, row_h)
             
             # Determine if this row needs background update
             is_selected = (selected_hex is not None and aircraft.hex_code == selected_hex)
             
             # Check if background needs to be updated
             # Only update if: hex_code changed at this y_pos OR selection state changed
-            old_state = self.row_hex_cache.get(y_pos, self.DEFAULT_ROW_STATE)
-            old_hex, old_selected = old_state
+            old_hex, old_selected = self.state.get_row_state(y_pos)
             needs_bg_update = (old_hex != aircraft.hex_code) or (old_selected != is_selected)
             
             if needs_bg_update:
@@ -129,7 +167,7 @@ class DataTable:
                     self.fb.fill_rectangle(self.x + 4, y_pos - 1, self.width - 8, row_h, self.cfg.BLACK)
             
             # Track what's at this row position
-            new_row_hex_cache[y_pos] = (aircraft.hex_code, is_selected)
+            new_row_state[y_pos] = (aircraft.hex_code, is_selected)
             
             color = self.cfg.RED if aircraft.is_military else self.cfg.BRIGHT_GREEN
             # Format columns with appropriate widths
@@ -177,20 +215,20 @@ class DataTable:
                 cache_key = (col_positions[j], y_pos)
                 
                 # Draw if: text changed OR background was just updated (which cleared the text)
-                if needs_bg_update or cache_key not in self.text_cache or self.text_cache[cache_key] != text_str:
+                if needs_bg_update or self.state.get_text(col_positions[j], y_pos) != text_str:
                     self.fb.draw_text(col_positions[j], y_pos, text_str, self.table_font, text_color, bg_color)
                 
-                new_text_cache[cache_key] = text_str
+                new_text[cache_key] = text_str
         
         # Clear remaining rows
-        if num_rows < self.max_rows:
+        if num_rows < self.state.max_rows:
             clear_y = start_y + num_rows * row_h
-            clear_height = (self.max_rows - num_rows) * row_h
+            clear_height = (self.state.max_rows - num_rows) * row_h
             self.fb.fill_rectangle(self.x + 4, clear_y, self.width - 8, clear_height, self.cfg.BLACK)
         
-        # Update caches
-        self.text_cache = new_text_cache
-        self.row_hex_cache = new_row_hex_cache
+        # Update state
+        self.state.text = new_text
+        self.state.row_state = new_row_state
 
         if not self.compact:
             # footer status
@@ -205,8 +243,8 @@ class DataTable:
                 "STATUS: {}".format(status),
                 "CONTACTS: {} ({} MIL)".format(len(aircraft_list), military_count),
                 "RANGE: {}NM".format(self.cfg.RADIUS_NM),
-                "TEXT_CACHE: {}".format(len(self.text_cache)),
-                "ROW_HEX_CACHE: {}".format(len(self.row_hex_cache)),
+                "TEXT_CACHE: {}".format(len(self.state.text)),
+                "ROW_STATE_CACHE: {}".format(len(self.state.row_state)),
 #                "INTERVAL: {}S".format(self.cfg.FETCH_INTERVAL),
 #                "NEXT UPDATE: {}".format(countdown_text),
             ]
@@ -223,9 +261,8 @@ class DataTable:
             self.show_memory_stats()
 
     def clear_cache(self):
-        """Clear the text cache, called when screen is cleared."""
-        self.text_cache = {}
-        self.row_hex_cache = {}
+        """Clear the drawing state, called when screen is cleared."""
+        self.state.clear()
         if MEMORY_DEBUG:
             self.show_memory_stats()
 
@@ -239,17 +276,15 @@ class DataTable:
         if x < self.x or x > self.x + self.width or y < self.y or y > self.y + self.height:
             return None
         
-        # Check each row - use center of row for more forgiving hit detection
-        for hex_code, row_y, row_h in self.row_layout:
-            # Check if touch is within the row boundaries
-            # row_y is the top of the text, we need to check the full row height
-            if y >= (row_y - 1) and y < (row_y - 1 + row_h):
-                return hex_code
+        # Check each row using the state's find_row method
+        hex_code = self.state.find_row(y)
+        if hex_code:
+            return hex_code
         
         # Touch is in table but not on a row - signal deselect
-        if self.row_layout:
+        if self.state.rows:
             # Only return 'deselect' if touch is in the data area (below first row)
-            first_row_y = self.row_layout[0][1]
+            first_row_y = self.state.rows[0][1]
             if y >= first_row_y:
                 return 'deselect'
         

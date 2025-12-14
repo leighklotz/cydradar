@@ -158,8 +158,8 @@ def scope_loop(once=False):
                     radar.radar_scope.draw_scope()
                 start = now
                 previous_aircraft = set()
-            else:
-                # Check if touch is on a table row or in table area
+            elif radar.data_table.is_in_table_bounds(x, y):
+                # Touch is within table bounds (not header) - handle selection only, never toggle layout
                 picked_hex = radar.data_table.pick_hex(x, y)
                 if picked_hex == 'deselect':
                     # Touch in table area but not on a row - deselect
@@ -178,15 +178,15 @@ def scope_loop(once=False):
                         print(f"Selected aircraft: {picked_hex}")
                         radar.selected_hex = picked_hex
                         radar.just_selected_hex = picked_hex
-                elif radar.radar_scope:
-                    # Touch is on radar scope area - toggle layout
-                    print("scope touch - changing layout")
-                    fb.clear(_cfg.BLACK)
-                    radar.next_layout()
-                    if radar.radar_scope:
-                        radar.radar_scope.draw_scope()
-                    start = now
-                    previous_aircraft = set()
+            elif radar.radar_scope:
+                # Touch is completely outside data table - toggle layout
+                print("outside table touch - changing layout")
+                fb.clear(_cfg.BLACK)
+                radar.next_layout()
+                if radar.radar_scope:
+                    radar.radar_scope.draw_scope()
+                start = now
+                previous_aircraft = set()
 
         if radar.radar_scope:
             radar.radar_scope.draw_planes(aircraft_list, previous_aircraft, selected_hex=radar.selected_hex, just_selected_hex=radar.just_selected_hex)

@@ -258,3 +258,11 @@ class DataTable:
         
         # If no rows, entire table is header area
         return True
+    
+    def is_in_table_bounds(self, x, y):
+        """
+        Check if touch is anywhere within the table bounds (header or data area).
+        Returns True if within table, False if outside.
+        """
+        return (x >= self.x and x <= self.x + self.width and 
+                y >= self.y and y <= self.y + self.height)

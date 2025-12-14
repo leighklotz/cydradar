@@ -1,9 +1,13 @@
 # MicroPython UI components for CYD-based ILI9341 displays
 
+import gc
+import micropython
 import math
 import utime
 from ili9341 import color565
 from cfg import _cfg
+
+MEMORY_DEBUG=True
 
 class DataTable:
     """Aircraft data table component using CYD display primitives."""
@@ -201,8 +205,10 @@ class DataTable:
                 "STATUS: {}".format(status),
                 "CONTACTS: {} ({} MIL)".format(len(aircraft_list), military_count),
                 "RANGE: {}NM".format(self.cfg.RADIUS_NM),
-                "INTERVAL: {}S".format(self.cfg.FETCH_INTERVAL),
-                "NEXT UPDATE: {}".format(countdown_text),
+                "TEXT_CACHE: {}".format(len(self.text_cache)),
+                "ROW_HEX_CACHE: {}".format(len(self.row_hex_cache)),
+#                "INTERVAL: {}S".format(self.cfg.FETCH_INTERVAL),
+#                "NEXT UPDATE: {}".format(countdown_text),
             ]
 
             status_y = self.y + self.height - (len(status_info) * self.status_font_h) - 4
@@ -213,10 +219,15 @@ class DataTable:
                 else:
                     self.fb.draw_text8x8(self.x + 6, status_y + i * self.status_font_h, s, color, background=self.cfg.BLACK)
     
+        if MEMORY_DEBUG:
+            self.show_memory_stats()
+
     def clear_cache(self):
         """Clear the text cache, called when screen is cleared."""
         self.text_cache = {}
         self.row_hex_cache = {}
+        if MEMORY_DEBUG:
+            self.show_memory_stats()
 
     def pick_hex(self, x, y):
         """
@@ -253,3 +264,17 @@ class DataTable:
         """
         return (x >= self.x and x < self.x + self.width and 
                 y >= self.y and y < self.y + self.height)
+
+    def show_memory_stats(self):
+        print("gc:")
+        # Force garbage collection to free up memory
+        gc.collect()
+        # Get the number of bytes currently allocated
+        allocated_memory = gc.mem_alloc()
+        # Get the number of free bytes available in the heap
+        free_memory = gc.mem_free()
+        print(f"Allocated memory: {allocated_memory} bytes")
+        print(f"Free memory: {free_memory} bytes")
+        print(f"Total heap size: {allocated_memory + free_memory} bytes")
+        # Print a detailed summary of RAM utilization (optional)
+        micropython.mem_info()

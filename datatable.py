@@ -264,5 +264,5 @@ class DataTable:
         Check if touch is anywhere within the table bounds (header or data area).
         Returns True if within table, False if outside.
         """
-        return (x >= self.x and x <= self.x + self.width and 
-                y >= self.y and y <= self.y + self.height)
+        return (x >= self.x and x < self.x + self.width and 
+                y >= self.y and y < self.y + self.height)

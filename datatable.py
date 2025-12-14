@@ -58,7 +58,7 @@ class DataTable:
             print(f"self.fb.draw_text8x8({title_x=}, {self.y=} + 4, {title=}, self.cfg.AMBER, background=self.cfg.BLACK)")
 
         # headers and column positions
-        headers_y = self.y + 20
+        headers_y = self.y + 16  # Reduced from 20 to fit more rows
         headers = ["CALL", "ALT", "SPD", "DIST", "TRK", "SQUAWK"]
         total_width = self.width - 12
         col_widths = [0.23, 0.15, 0.15, 0.15, 0.15, 0.17]

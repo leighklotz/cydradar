@@ -138,7 +138,8 @@ def scope_loop(once=False):
     if radar.radar_scope:
         radar.radar_scope.draw_scope()
     
-    # Initialize touch coordinates
+    # Touch coordinates persist across loop iterations
+    # Read only at end during sleep polling for simplicity
     x, y = 0, 0
     
     while True:
@@ -199,16 +200,15 @@ def scope_loop(once=False):
         )
         
         # Sleep with touch polling for better responsiveness
-        # Break sleep into 100ms chunks and check for touches
-        # Read touch only here at the end of the loop
-        x, y = 0, 0  # Reset touch
+        # Reset touch coordinates, then poll during sleep
+        x, y = 0, 0
         sleep_remaining = 1000
         sleep_chunk = 100
         while sleep_remaining > 0:
             utime.sleep_ms(min(sleep_chunk, sleep_remaining))
             sleep_remaining -= sleep_chunk
             
-            # Check for touch during sleep
+            # Check for touch during sleep - read touch only here
             x, y = cyd.touches()
             if x != 0 and y != 0:
                 # Touch detected - exit sleep early to handle it in next iteration

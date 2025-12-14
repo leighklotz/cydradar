@@ -58,8 +58,8 @@ class RadarScope:
             self.fb.draw_line(tx, ty, x, y, line_color)
 
         # callsign - prefer draw_text with font if provided, otherwise draw_text8x8
-        # Force show label for selected aircraft, or when first seen
-        if show_label or is_selected:
+        # Draw label when: first seen OR when selection circle is being drawn (i.e., just tapped)
+        if show_label or draw_selection_circle:
             callsign = aircraft.callsign
             if callsign is not None: 
                 if self.font is not None:

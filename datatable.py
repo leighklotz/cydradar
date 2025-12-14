@@ -228,9 +228,11 @@ class DataTable:
         if x < self.x or x > self.x + self.width or y < self.y or y > self.y + self.height:
             return None
         
-        # Check each row
+        # Check each row - use center of row for more forgiving hit detection
         for hex_code, row_y, row_h in self.row_layout:
-            if y >= row_y and y < row_y + row_h:
+            # Check if touch is within the row boundaries
+            # row_y is the top of the text, we need to check the full row height
+            if y >= (row_y - 1) and y < (row_y - 1 + row_h):
                 return hex_code
         
         # Touch is in table but not on a row - signal deselect
@@ -242,22 +244,7 @@ class DataTable:
         
         return None
     
-    def is_header_touch(self, x, y):
-        """
-        Check if touch is in the header area (title and column headers).
-        Returns True if in header area (where layout change should happen).
-        """
-        # Check if touch is within table bounds
-        if x < self.x or x > self.x + self.width or y < self.y or y > self.y + self.height:
-            return False
-        
-        # Header area is from table top to just before first data row
-        if self.row_layout:
-            first_row_y = self.row_layout[0][1]
-            return y < first_row_y
-        
-        # If no rows, entire table is header area
-        return True
+
     
     def is_in_table_bounds(self, x, y):
         """

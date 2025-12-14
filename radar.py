@@ -94,9 +94,7 @@ class Radar:
     def next_layout(self):
         s = (self.style + 1) % 3
         self.create_widgets(s)
-        # Clear selection when layout changes
-        self.selected_hex = None
-        self.just_selected_hex = None
+        # Selection persists across layout changes
         # Clear text cache when layout changes
         self.data_table.clear_cache()
 
@@ -148,18 +146,18 @@ def scope_loop(once=False):
         
         # Process touch event if we have one
         if x != 0 and y != 0:
-            # Check if touch is on data table header (for layout change)
-            if radar.data_table.is_header_touch(x, y):
-                # Touch is on table header - toggle layout
-                print("header touch - changing layout")
+            # Style 2 (full-screen table): any touch toggles layout, no selection
+            if radar.style == 2:
+                print("fullscreen table touch - changing layout")
                 fb.clear(_cfg.BLACK)
                 radar.next_layout()
                 if radar.radar_scope:
                     radar.radar_scope.draw_scope()
                 start = now
                 previous_aircraft = set()
+            # Other modes: check table for selection, elsewhere for layout toggle
             elif radar.data_table.is_in_table_bounds(x, y):
-                # Touch is within table bounds (not header) - handle selection only, never toggle layout
+                # Touch is within table bounds - handle selection only, never toggle layout
                 picked_hex = radar.data_table.pick_hex(x, y)
                 if picked_hex == 'deselect':
                     # Touch in table area but not on a row - deselect

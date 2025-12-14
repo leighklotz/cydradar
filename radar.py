@@ -192,7 +192,21 @@ def scope_loop(once=False):
         previous_aircraft.update(
             craft.hex_code for craft in aircraft_list if craft.hex_code is not None
         )
-        utime.sleep_ms(1000)
+        
+        # Sleep with touch polling for better responsiveness
+        # Break sleep into 100ms chunks and check for touches
+        sleep_remaining = 1000
+        sleep_chunk = 100
+        while sleep_remaining > 0:
+            utime.sleep_ms(min(sleep_chunk, sleep_remaining))
+            sleep_remaining -= sleep_chunk
+            
+            # Check for touch during sleep
+            x, y = cyd.touches()
+            if x != 0 and y != 0:
+                # Touch detected - exit sleep early to handle it
+                break
+
 
 
 # Example: run a few steps for testing

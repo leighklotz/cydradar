@@ -35,6 +35,8 @@ class Radar:
         self.radar_scope = None
         self.data_table = None
         self.style = 0
+        self.selected_hex = None  # Currently selected aircraft
+        self.just_selected_hex = None  # Aircraft that was just tapped (to show circle)
 
     def create_widgets(self, style=1):
         """
@@ -47,11 +49,11 @@ class Radar:
         if style == 0:
             # Max-sized scope on top and shorter table below
             self.radar_scope = RadarScope(
-                self.fb, center_x=120, center_y=118, radius=118,
+                self.fb, center_x=120, center_y=116, radius=116,
                 font=self.status_font, config=self.config
             )
             self.data_table = DataTable(
-                self.fb, x=4, y=236, width=236, height=80,
+                self.fb, x=4, y=234, width=236, height=86,
                 table_font=self.table_font, compact=True
             )
         elif style == 1:
@@ -83,12 +85,18 @@ class Radar:
         """
         now = utime.ticks_ms()
         if self.radar_scope:
-            self.radar_scope.draw(aircraft_list)
-        self.data_table.draw(aircraft_list, status="OK", last_update_ticks_ms=now)
+            self.radar_scope.draw_scope()
+            self.radar_scope.draw_planes(aircraft_list, selected_hex=self.selected_hex, just_selected_hex=self.just_selected_hex)
+        self.data_table.draw(aircraft_list, status="OK", last_update_ticks_ms=now, selected_hex=self.selected_hex)
+        # Clear just_selected after first draw
+        self.just_selected_hex = None
 
     def next_layout(self):
         s = (self.style + 1) % 3
         self.create_widgets(s)
+        # Selection persists across layout changes
+        # Clear text cache when layout changes
+        self.data_table.clear_cache()
 
 # initialize display
 cyd = CYD(display_width=240, display_height=320, rotation=180)
@@ -119,32 +127,6 @@ def single_update():
     return utime.ticks_ms()
 
 
-def sweep_loop(step_delay_ms=30):
-    """
-    Continuous sweep loop. Call from REPL or main.
-    step_delay_ms: ms to sleep between steps (tune for appearance vs CPU)
-    """
-    # do an initial full redraw to ensure background & ring labels are present
-    aircraft_list = fetch_your_data()
-    if radar.radar_scope:
-        radar.radar_scope.draw(aircraft_list, sweep=False)  # full redraw once at startup
-    radar.data_table.draw(aircraft_list, status="OK", last_update_ticks_ms=utime.ticks_ms())
-
-    try:
-        while True:
-            now = utime.ticks_ms()
-            aircraft_list = fetch_your_data()
-            # advance by one segment (show pip labels when illuminated)
-            if radar.radar_scope:
-                radar.radar_scope.step(aircraft_list)
-            # refresh the table with the same timestamp for a consistent UI
-            radar.data_table.draw(aircraft_list, status="OK", last_update_ticks_ms=now)
-            utime.sleep_ms(step_delay_ms)
-    except KeyboardInterrupt:
-        # stop cleanly in REPL
-        print("Sweep stopped by user")
-
-
 def scope_loop(once=False):
     """
     Continuous scope loop. Call from REPL or main.
@@ -153,29 +135,83 @@ def scope_loop(once=False):
     previous_aircraft = set()
     if radar.radar_scope:
         radar.radar_scope.draw_scope()
+    
+    # Touch coordinates persist across loop iterations
+    # Read only at end during sleep polling for simplicity
+    x, y = 0, 0
+    
     while True:
-        x, y = cyd.touches()
         aircraft_list = fetch_your_data()
         now = utime.ticks_ms()
+        
+        # Process touch event if we have one
         if x != 0 and y != 0:
-            print("clearing screen")
-            fb.clear(_cfg.BLACK)
-            print("next layout")
-            radar.next_layout()
-            if radar.radar_scope:
-                radar.radar_scope.draw_scope()
-            start = now
-            previous_aircraft = set()
+            # Style 2 (full-screen table): any touch toggles layout, no selection
+            if radar.style == 2:
+                print("fullscreen table touch - changing layout")
+                fb.clear(_cfg.BLACK)
+                radar.next_layout()
+                if radar.radar_scope:
+                    radar.radar_scope.draw_scope()
+                start = now
+                previous_aircraft = set()
+            # Other modes: check table for selection, elsewhere for layout toggle
+            elif radar.data_table.is_in_table_bounds(x, y):
+                # Touch is within table bounds - handle selection only, never toggle layout
+                picked_hex = radar.data_table.pick_hex(x, y)
+                if picked_hex == 'deselect':
+                    # Touch in table area but not on a row - deselect
+                    print("Deselecting aircraft")
+                    radar.selected_hex = None
+                    radar.just_selected_hex = None
+                elif picked_hex:
+                    # Touch is on a table row - toggle selection
+                    if radar.selected_hex == picked_hex:
+                        # Same aircraft - deselect
+                        print(f"Deselecting aircraft: {picked_hex}")
+                        radar.selected_hex = None
+                        radar.just_selected_hex = None
+                    else:
+                        # Different aircraft - select and mark as just selected
+                        print(f"Selected aircraft: {picked_hex}")
+                        radar.selected_hex = picked_hex
+                        radar.just_selected_hex = picked_hex
+            elif radar.radar_scope:
+                # Touch is completely outside data table - toggle layout
+                print("outside table touch - changing layout")
+                fb.clear(_cfg.BLACK)
+                radar.next_layout()
+                if radar.radar_scope:
+                    radar.radar_scope.draw_scope()
+                start = now
+                previous_aircraft = set()
 
         if radar.radar_scope:
-            radar.radar_scope.draw_planes(aircraft_list, previous_aircraft)
-        radar.data_table.draw(aircraft_list, status="OK", last_update_ticks_ms=now)
+            radar.radar_scope.draw_planes(aircraft_list, previous_aircraft, selected_hex=radar.selected_hex, just_selected_hex=radar.just_selected_hex)
+        radar.data_table.draw(aircraft_list, status="OK", last_update_ticks_ms=now, selected_hex=radar.selected_hex)
+        # Clear just_selected after first draw
+        radar.just_selected_hex = None
         if once:
             break
         previous_aircraft.update(
             craft.hex_code for craft in aircraft_list if craft.hex_code is not None
         )
-        utime.sleep_ms(1000)
+        
+        # Sleep with touch polling for better responsiveness
+        # Reset touch coordinates, then poll during sleep
+        x, y = 0, 0
+        sleep_remaining = 1000
+        sleep_chunk = 100
+        while sleep_remaining > 0:
+            utime.sleep_ms(min(sleep_chunk, sleep_remaining))
+            sleep_remaining -= sleep_chunk
+            
+            # Check for touch during sleep - read touch only here
+            x, y = cyd.touches()
+            if x != 0 and y != 0:
+                # Touch detected - exit sleep early to handle it in next iteration
+                break
+
 
 
 # Example: run a few steps for testing

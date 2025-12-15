@@ -14,7 +14,11 @@ It fetches aircraft data from a local dump1090 instance (or similar) and visuali
 *   **Military Aircraft Identification:** Optionally highlights military aircraft in red.
 *   **Configurable Parameters:** Adjustable range, display colors, and other settings.
 *   **MicroPython Compatibility:** Specifically designed for MicroPython on ESP32 with the CYD library.
-*   **Touch screen:** Pressing the touch screen switches layouts.
+*   **Touchscreen Controls:** 
+    *   Tap table header to switch layouts
+    *   Tap aircraft row to select/deselect (yellow highlight)
+    *   Tap radar scope to switch layouts
+    *   Selected aircraft show yellow highlight in both table and scope
 
 ## Hardware Requirements
 
@@ -50,6 +54,47 @@ The `cfg.py` file contains configurable parameters:
 *   `MAX_TABLE_ROWS`: The maximum number of rows to display in the aircraft table.
 *   `MIL_PREFIX_LIST`: List of hex prefixes to identify military aircraft.
 *   Color constants to customize the display.
+
+## Usage
+
+### Touchscreen Controls
+
+The display supports three layout modes that can be cycled through by tapping the table header or radar scope:
+
+#### Layout Modes
+
+1. **Mode 0 - Large Radar:** Large radar scope with compact table below
+   
+   ![Layout Mode 0](docs/layout-mode-0.jpg)
+
+2. **Mode 1 - Split Screen:** Medium radar scope with full-height table side-by-side
+   
+   ![Layout Mode 1](docs/layout-mode-1.jpg)
+
+3. **Mode 2 - Full Table:** Full-screen aircraft data table
+   
+   ![Layout Mode 2](docs/layout-mode-2.jpg)
+
+#### Touch Interactions
+
+*   **Tap table header (title/column headers):** Switch to next layout mode
+*   **Tap aircraft row:** Select aircraft (yellow highlight in table and scope)
+*   **Tap selected aircraft row again:** Deselect aircraft
+*   **Tap empty table area (between/after rows):** Deselect current aircraft
+*   **Tap radar scope area:** Switch to next layout mode (when scope is visible in Mode 0 or 1)
+*   **Tap outside table boundary:** Switch to next layout mode
+
+#### Selection Behavior
+
+*   Only one aircraft can be selected at a time
+*   Selected aircraft displays with:
+    *   Yellow background in the data table with black text
+    *   Yellow track line on the radar scope (green track becomes yellow)
+    *   Yellow highlight ring around the blip (only shown on initial selection tap)
+    *   Callsign label always visible (even if previously hidden)
+*   Selection persists across layout changes and data updates
+*   Selection automatically cleared when switching layouts
+*   Touches within table row area never trigger layout changes (selection/deselection only)
 
 ## About ADSB JSON
 - See [docs/ADSB](docs/ADSB.md)

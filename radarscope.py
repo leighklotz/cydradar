@@ -31,8 +31,12 @@ class RadarScope:
             return int(x), int(y)
         return None
 
-    def draw_aircraft(self, aircraft, x, y, pip_color, track_color, show_label=True):
+    def draw_aircraft(self, aircraft, x, y, pip_color, track_color, show_label=True, is_selected=False, draw_selection_circle=False):
         """Draw an aircraft marker, trail and callsign using CYD API directly."""
+        # Draw yellow circle only when explicitly requested (on tap)
+        if draw_selection_circle:
+            self.fb.draw_circle(x, y, 6, self.cfg.YELLOW)
+        
         # filled circle for aircraft
         if show_label:
             self.fb.fill_circle(x, y, 3, pip_color)
@@ -49,22 +53,33 @@ class RadarScope:
             trail_length = min_length + (max_length - min_length) * min(getattr(aircraft, "speed", 0), max_speed) / max_speed
             tx = int(x + trail_length * math.sin(track_rad))
             ty = int(y - trail_length * math.cos(track_rad))
-            self.fb.draw_line(tx, ty, x, y, track_color)
+            # Use yellow track for selected aircraft
+            line_color = self.cfg.YELLOW if is_selected else track_color
+            self.fb.draw_line(tx, ty, x, y, line_color)
 
         # callsign - prefer draw_text with font if provided, otherwise draw_text8x8
-        # todo: we should draw the callsign when it's first seen, even if show_label is off
-        if show_label:
+        # Draw label when: first seen OR when selection circle is being drawn (i.e., just tapped)
+        if show_label or draw_selection_circle:
             callsign = aircraft.callsign
-            if callsign is not None: 
+            if callsign is not None:
+                # Use yellow for newly-tracked (selected) planes, green for newly-heard ones
+                label_color = self.cfg.YELLOW if draw_selection_circle else pip_color
                 if self.font is not None:
                     # draw_text(x, y, text, font, color, background)
-                    self.fb.draw_text(x + 8, y - 12, callsign, self.font, pip_color, self.cfg.BLACK)
+                    self.fb.draw_text(x + 8, y - 12, callsign, self.font, label_color, self.cfg.BLACK)
                 else:
                     # draw_text8x8(x, y, text, color, background=...)
-                    self.fb.draw_text8x8(x + 8, y - 12, callsign, pip_color, background=self.cfg.BLACK)
+                    self.fb.draw_text8x8(x + 8, y - 12, callsign, label_color, background=self.cfg.BLACK)
 
-    def draw_planes(self, aircraft_list, previous_aircraft=None):
-        """Draw planes"""
+    def draw_planes(self, aircraft_list, previous_aircraft=None, selected_hex=None, just_selected_hex=None):
+        """Draw planes
+        
+        Args:
+            aircraft_list: List of aircraft to draw
+            previous_aircraft: Set of previously drawn aircraft hex codes
+            selected_hex: Currently selected aircraft hex code
+            just_selected_hex: Aircraft that was just tapped (to draw selection circle)
+        """
 
         # blink state for military blips
         blink_state = ((utime.ticks_ms() // 500) & 1) == 0
@@ -74,33 +89,20 @@ class RadarScope:
             if pos:
                 x, y = pos
                 show_label = previous_aircraft is None or aircraft.hex_code not in previous_aircraft
+                is_selected = (selected_hex is not None and aircraft.hex_code == selected_hex)
+                draw_circle = (just_selected_hex is not None and aircraft.hex_code == just_selected_hex)
                 if aircraft.is_military:
                     if not self.cfg.BLINK_MILITARY or blink_state:
-                        self.draw_aircraft(aircraft, x, y, self.cfg.RED, self.cfg.DIM_GREEN, show_label=show_label)
+                        self.draw_aircraft(aircraft, x, y, self.cfg.RED, self.cfg.DIM_GREEN, show_label=show_label, is_selected=is_selected, draw_selection_circle=draw_circle)
                 else:
-                    self.draw_aircraft(aircraft, x, y, self.cfg.BRIGHT_GREEN, self.cfg.DIM_GREEN, show_label=show_label)
+                    self.draw_aircraft(aircraft, x, y, self.cfg.BRIGHT_GREEN, self.cfg.DIM_GREEN, show_label=show_label, is_selected=is_selected, draw_selection_circle=draw_circle)
 
     def draw_scope(self):
         """Draw radar rings, crosshairs and aircraft. Does not clear entire screen."""
-        # range rings as closed polylines using fb.draw_lines
+        # range rings using draw_circle (much faster than polyline approach)
         for ring in range(1, 4):
-            start_ring_time = utime.ticks_ms()
             ring_radius = int((ring / 3) * self.radius)
-            coords = []
-            step = 30  # degree step for ring points (smaller = smoother, slower)
-            for deg in range(0, 360 + step, step):
-                rad = math.radians(deg % 360)
-                px = int(self.center_x + ring_radius * math.cos(rad))
-                py = int(self.center_y + ring_radius * math.sin(rad))
-                coords.append([px, py])
-            # ensure loop closed
-            if coords and coords[0] != coords[-1]:
-                coords.append(coords[0])
-            #print(coords)
-            end_calc_time = utime.ticks_ms()
-            self.fb.draw_lines(coords, self.cfg.DIM_GREEN)
-            end_draw_time = utime.ticks_ms()
-            print(f"calc={end_calc_time-start_ring_time}ms draw={end_draw_time-end_calc_time}ms")
+            self.fb.draw_circle(self.center_x, self.center_y, ring_radius, self.cfg.DIM_GREEN)
 
             # label ring
             if self.cfg.LABEL_RING:

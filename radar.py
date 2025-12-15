@@ -8,7 +8,7 @@ from xglcd_font import XglcdFont
 from datatable import DataTable
 from aircraft import Aircraft
 from cfg import _cfg
-from radarscope import RadarScope
+from scope import RadarScope
 from fetch import AircraftTracker
 
 

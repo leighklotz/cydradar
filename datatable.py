@@ -7,7 +7,7 @@ import utime
 from ili9341 import color565
 from cfg import _cfg
 
-MEMORY_DEBUG=False
+MEMORY_DEBUG=True
 
 class DrawState:
     """Encapsulates all drawing state for the data table."""

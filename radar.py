@@ -49,11 +49,11 @@ class Radar:
         if style == 0:
             # Max-sized scope on top and shorter table below
             self.radar_scope = RadarScope(
-                self.fb, center_x=120, center_y=118, radius=118,
+                self.fb, center_x=120, center_y=116, radius=116,
                 font=self.status_font, config=self.config
             )
             self.data_table = DataTable(
-                self.fb, x=4, y=236, width=236, height=80,
+                self.fb, x=4, y=234, width=236, height=86,
                 table_font=self.table_font, compact=True
             )
         elif style == 1:

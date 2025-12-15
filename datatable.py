@@ -88,20 +88,17 @@ class DataTable:
         # border
         # print(f"self.fb.draw_rectangle({self.x=}, {self.y=}, {self.width=}, {self.height=}, {self.cfg.BRIGHT_GREEN=})")
         self.fb.draw_rectangle(self.x, self.y, self.width, self.height, self.cfg.BRIGHT_GREEN)
-
         # title
         title = "AIRCRAFT DATA"
         if self.table_font is not None:
             title_x = self.x + (self.width // 2) - (len(title) * self.table_font.width // 2)
-            print(f"self.fb.draw_text({title_x=}, {self.y=} + 4, {title=}, {self.table_font=}, self.cfg.AMBER, self.cfg.BLACK)")
             self.fb.draw_text(title_x, self.y + 4, title, self.table_font, self.cfg.AMBER, self.cfg.BLACK)
         else:
             title_x = self.x + (self.width // 2) - (len(title) * 8 // 2)
             self.fb.draw_text8x8(title_x, self.y + 4, title, self.cfg.AMBER, background=self.cfg.BLACK)
-            print(f"self.fb.draw_text8x8({title_x=}, {self.y=} + 4, {title=}, self.cfg.AMBER, background=self.cfg.BLACK)")
 
         # headers and column positions
-        headers_y = self.y + 16  # Reduced from 20 to fit more rows
+        headers_y = self.y + 14  # Reduced from 20 to 16 to 14 to fit more rows
         headers = ["CALL", "ALT", "SPD", "DIST", "TRK", "SQUAWK"]
         total_width = self.width - 12
         col_widths = [0.23, 0.15, 0.15, 0.15, 0.15, 0.17]
@@ -125,17 +122,20 @@ class DataTable:
         # Calculate maximum rows that can fit
         start_y = headers_y + self.table_font_h + 4
         row_h = self.table_font_h + 2
+        # print(f"{row_h=}")
         
         # Calculate available space for rows
         if self.compact:
-            available_height = self.height - (start_y - self.y) - 4
+            available_height = self.height - (start_y - self.y)
+            # print(f"{available_height=} = {self.height=} - ({start_y=} - {self.y=})")
         else:
             # Calculate status footer height dynamically
-            status_info_lines = 5  # STATUS, CONTACTS, RANGE, INTERVAL, NEXT UPDATE
+            status_info_lines = 5  # e.g. STATUS, CONTACTS, RANGE, INTERVAL, NEXT UPDATE
             footer_height = status_info_lines * self.status_font_h + 8
             available_height = self.height - (start_y - self.y) - footer_height
         
         self.state.max_rows = max(1, int(available_height / row_h))
+        print(f"{self.state.max_rows=}")
         
         # rows (sorted by distance)
         sorted_ac = sorted(aircraft_list, key=lambda a: getattr(a, "distance", 9999))
@@ -223,7 +223,7 @@ class DataTable:
         # Clear remaining rows
         if num_rows < self.state.max_rows:
             clear_y = start_y + num_rows * row_h
-            clear_height = (self.state.max_rows - num_rows) * row_h
+            clear_height = (self.state.max_rows - num_rows) * row_h - 1
             self.fb.fill_rectangle(self.x + 4, clear_y, self.width - 8, clear_height, self.cfg.BLACK)
         
         # Update state

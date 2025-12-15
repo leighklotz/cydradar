@@ -19,8 +19,7 @@ class AircraftTracker:
         self.last_update = time.time()
         try:
             print(f"Fetching aircraft data from {_cfg.DUMP1090_URL}")
-            response = requests.get(_cfg.DUMP1090_URL, timeout=600)
-            # micropython Error: Couldn't fetch aircraft data: 'Response' object has no attribute 'raise_for_status'
+            response = requests.get(_cfg.DUMP1090_URL, timeout=10)
             if response.status_code >= 400:
                 raise Exception(f"HTTP error: Status code {response.status_code}")
             data = response.json()

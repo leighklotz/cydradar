@@ -17,7 +17,7 @@ class AircraftTracker:
         """Fetch aircraft from local dump1090"""
         try:
             print(f"Fetching aircraft data from {_cfg.DUMP1090_URL}")
-            response = requests.get(_cfg.DUMP1090_URL, timeout=10)
+            response = requests.get(_cfg.DUMP1090_URL, timeout=600)
             # micropython Error: Couldn't fetch aircraft data: 'Response' object has no attribute 'raise_for_status'
             if response.status_code >= 400:
                 raise Exception(f"HTTP error: Status code {response.status_code}")

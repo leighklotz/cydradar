@@ -180,6 +180,11 @@ class DataTable:
             callsign = ("{:<8}".format(aircraft.callsign[:8]) if aircraft.callsign else "{:<8}".format(aircraft.hex_code[:8]))
             altitude = "{:>5}".format(aircraft.altitude) if isinstance(aircraft.altitude, int) and aircraft.altitude > 0 else "{:>5}".format("-")
             speed = "{:>3}".format(int(aircraft.speed)) if getattr(aircraft, "speed", 0) and aircraft.speed > 0 else "{:>3}".format("-")
+            if getattr(aircraft, "vert_rate", 0) and aircraft.vert_rate != 0:
+                if aircraft.vert_rate < 0:
+                    speed = f"{speed}v"
+                else:
+                    speed = f"{speed}^"
             
             # Distance: show one decimal place up to 99.9, then show as integer 100+
             if getattr(aircraft, "distance", 0) and aircraft.distance > 0:

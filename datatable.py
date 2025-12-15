@@ -7,7 +7,7 @@ import utime
 from ili9341 import color565
 from cfg import _cfg
 
-MEMORY_DEBUG=True
+MEMORY_DEBUG=False
 
 class DrawState:
     """Encapsulates all drawing state for the data table."""
@@ -98,16 +98,17 @@ class DataTable:
             self.fb.draw_text8x8(title_x, self.y + 4, title, self.cfg.AMBER, background=self.cfg.BLACK)
 
         # headers and column positions
-        headers_y = self.y + 14  # Reduced from 20 to 16 to 14 to fit more rows
-        headers = ["CALL", "ALT", "SPD", "DIST", "TRK", "SQUAWK"]
-        total_width = self.width - 12
-        col_widths = [0.23, 0.15, 0.15, 0.15, 0.15, 0.17]
+        headers_y = self.y + 14
+        headers = ["CALL", "  ALT", "SPD", "DIST", "TRK", "SQUAWK"]
+        total_width = self.width - 10
+        col_widths = [0.28, 0.19, 0.12, 0.15, 0.12, 0.13]
         col_positions = []
-        current_x = self.x + 6
+        current_x = self.x + 5
         for ratio in col_widths:
             w = int(total_width * ratio)
             col_positions.append(current_x)
             current_x += w
+        print(f"{total_width=} {col_widths=} {col_positions=}")
 
         # draw headers
         for i, h in enumerate(headers):
@@ -146,7 +147,7 @@ class DataTable:
         new_row_state = {}
         
         for i, aircraft in enumerate(sorted_ac[:self.state.max_rows]):
-            print(f"table: {i=} {aircraft.__dict__}")
+            # print(f"table: {i=} {aircraft.__dict__}")
             y_pos = start_y + i * row_h
             
             # Store row layout for hit testing
@@ -171,21 +172,31 @@ class DataTable:
             
             color = self.cfg.RED if aircraft.is_military else self.cfg.BRIGHT_GREEN
             # Format columns with appropriate widths
-            # CALL: 8 chars left-aligned
-            # ALT: 5 chars right-aligned (up to 99999 ft)
+            # CALL: 8 chars left-aligned + optional '/' + CATEGORY 2 chars
+            # ALT: 5 chars right-aligned (up to 99999 ft) + optional vert_flag +/-
             # SPD: 3 chars right-aligned (up to 999 kts)
             # DIST: 4 chars right-aligned (up to 99.9 nm, or 99+ for 100+)
             # TRK: 4 chars right-aligned (0-359°)
             # SQUAWK: 4 chars left-aligned
-            callsign = ("{:<8}".format(aircraft.callsign[:8]) if aircraft.callsign else "{:<8}".format(aircraft.hex_code[:8]))
-            altitude = "{:>5}".format(aircraft.altitude) if isinstance(aircraft.altitude, int) and aircraft.altitude > 0 else "{:>5}".format("-")
+            callsign = aircraft.callsign if aircraft.callsign else aircraft.hex_code
             speed = "{:>3}".format(int(aircraft.speed)) if getattr(aircraft, "speed", 0) and aircraft.speed > 0 else "{:>3}".format("-")
-            if getattr(aircraft, "vert_rate", 0) and aircraft.vert_rate != 0:
-                if aircraft.vert_rate < 0:
-                    speed = f"{speed}v"
-                else:
-                    speed = f"{speed}^"
+            vert_rate = int(getattr(aircraft, "vert_rate", 0))
+            category = aircraft.category
+
+            # Show category after callsign, if present
+            if category:
+                callsign = "{}/{}".format(callsign, category)
+            callsign = "{:<10}".format(callsign[:10])
             
+            # Show +/- after altitude based on vert_rate
+            if vert_rate < 0:
+                vert_flag = "-"
+            elif vert_rate > 0:
+                vert_flag = "+"
+            else:
+                vert_flag = ""
+            altitude = "{:>5}{}".format(aircraft.altitude if isinstance(aircraft.altitude, int) and aircraft.altitude > 0 else "-", vert_flag)
+
             # Distance: show one decimal place up to 99.9, then show as integer 100+
             if getattr(aircraft, "distance", 0) and aircraft.distance > 0:
                 if aircraft.distance < 100:

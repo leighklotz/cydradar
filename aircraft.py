@@ -19,9 +19,10 @@ SAMPLE_AIRCRAFT_JSON = """
 """
 class Aircraft:
     """Aircraft data from tar1090"""
-    def __init__(self, hex_code: str, callsign: str, squawk: str, lat: float, lon: float, altitude: int, speed: int, vert_rate: int, track: float, distance: float, bearing: float, is_military: bool = False):
+    def __init__(self, hex_code: str, callsign: str, category: str, squawk: str, lat: float, lon: float, altitude: int, speed: int, vert_rate: int, track: float, distance: float, bearing: float, is_military: bool = False):
         self.hex_code = hex_code
         self.callsign = callsign
+        self.category = category
         self.squawk = squawk
         self.lat = lat
         self.lon = lon
@@ -49,7 +50,8 @@ class Aircraft:
         return Aircraft(
             hex_code=hex_code,
             callsign=data.get('flight', "").strip()[:8] or None,
-            squawk = data.get('squawk', "") or None,
+            category=data.get('category', None),
+            squawk = data.get('squawk', None),
             lat=lat, lon=lon,
             altitude=data.get('altitude', 0) or 0,
             speed=int(data.get('speed', 0) or 0),

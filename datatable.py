@@ -179,7 +179,7 @@ class DataTable:
             # TRK: 4 chars right-aligned (0-359°)
             # SQUAWK: 4 chars left-aligned
             callsign = aircraft.callsign if aircraft.callsign else aircraft.hex_code
-            speed = "{:>3}".format(int(aircraft.speed)) if getattr(aircraft, "speed", 0) and aircraft.speed > 0 else "{:>3}".format("-")
+            speed = "{:>3}".format(int(aircraft.speed)) if getattr(aircraft, "speed", 0) and aircraft.speed > 0 else " - "
             vert_rate = int(getattr(aircraft, "vert_rate", 0))
             category = aircraft.category
 
@@ -208,16 +208,16 @@ class DataTable:
             
             # Track: show with degree symbol (track is 0-359)
             if getattr(aircraft, "track", 0) and aircraft.track > 0:
-                track = "{:>3}°".format(int(aircraft.track))
+                track = "{:>3} ".format(int(aircraft.track)) # "° " fails to show up
             else:
-                track = "{:>4}".format("-")
+                track = "   -"
             
             # Squawk: handle None/empty safely
             squawk_val = getattr(aircraft, "squawk", None)
             if squawk_val is not None:
                 squawk = "{:<4}".format(str(squawk_val)[:4])
             else:
-                squawk = "{:<4}".format("-")
+                squawk = " -  "
             
             cols = [callsign, altitude, speed, distance, track, squawk]
             
@@ -282,27 +282,30 @@ class DataTable:
         if MEMORY_DEBUG:
             self.show_memory_stats()
 
+
     def pick_hex(self, x, y):
         """
         Hit-test to find which aircraft row was tapped.
         Returns the hex_code of the aircraft, or None if no row was hit.
         Returns 'deselect' if touched in table area but not on a row (to deselect).
         """
-        # Check if touch is within table bounds
+        # Exit if touch is not within table bounds
         if x < self.x or x > self.x + self.width or y < self.y or y > self.y + self.height:
             return None
         
         # Check each row using the state's find_row method
         hex_code = self.state.find_row(y)
         if hex_code:
+            # give quick feedback about where the user touched, since display is slow
+            # todo: this is outside the row, and that will leave noise on the screen
+            self.fb.draw_rectangle(8, y, 220, 1, _cfg.YELLOW)
             return hex_code
+
         
-        # Touch is in table but not on a row - signal deselect
+        # Touch is in table but not on a row - deselect
         if self.state.rows:
-            # Only return 'deselect' if touch is in the data area (below first row)
-            first_row_y = self.state.rows[0][1]
-            if y >= first_row_y:
-                return 'deselect'
+            # self.fb.draw_rectangle(8, y, 220, 1, _cfg.RED)
+            return 'deselect'
         
         return None
     

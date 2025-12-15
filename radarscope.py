@@ -97,9 +97,24 @@ class RadarScope:
                 else:
                     self.draw_aircraft(aircraft, x, y, self.cfg.BRIGHT_GREEN, self.cfg.DIM_GREEN, show_label=show_label, is_selected=is_selected, draw_selection_circle=draw_circle)
 
+    def draw_waypoints(self, waypoint_list, show_label=True):
+        if waypoint_list:
+            for (name,(lat, lon)) in waypoint_list.items():
+                print(f"self.draw_waypoint({name=}, {lat=}, {lon=}, {show_label=})")
+                self.draw_waypoint(name, lat, lon, show_label)
+
+    def draw_waypoint(self, name, lat, lon, show_label=True):
+        """Draw a waypoint"""
+        pos = self.lat_lon_to_screen(lat, lon)
+        if pos and name:
+            (x,y) = pos
+            if self.font is not None:
+                self.fb.draw_text(x - 5, y, name, self.font, self.cfg.AMBER, self.cfg.BLACK)
+            else:
+                self.fb.draw_text8x8(x - 5, y, name, self.cfg.AMBER, background=self.cfg.BLACK)
+
     def draw_scope(self):
-        """Draw radar rings, crosshairs and aircraft. Does not clear entire screen."""
-        # range rings using draw_circle (much faster than polyline approach)
+        """Draw radar rings, crosshairs, and aircraft. Does not clear entire screen."""
         for ring in range(1, 4):
             ring_radius = int((ring / 3) * self.radius)
             self.fb.draw_circle(self.center_x, self.center_y, ring_radius, self.cfg.DIM_GREEN)
@@ -120,4 +135,3 @@ class RadarScope:
         # center mark
         if False:
             self.fb.fill_circle(self.center_x, self.center_y, 2, self.cfg.BRIGHT_GREEN)
-

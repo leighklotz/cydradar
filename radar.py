@@ -76,21 +76,6 @@ class Radar:
         else:
             raise ArgumentException(f"unknown {style=}")
 
-    def update(self, aircraft_list):
-        """
-        Updates the radar display with new aircraft data.
-
-        Args:
-            aircraft_list: A list of Aircraft objects.
-        """
-        now = utime.ticks_ms()
-        if self.radar_scope:
-            self.radar_scope.draw_scope()
-            self.radar_scope.draw_planes(aircraft_list, selected_hex=self.selected_hex, just_selected_hex=self.just_selected_hex)
-        self.data_table.draw(aircraft_list, status="OK", last_update_ticks_ms=now, selected_hex=self.selected_hex)
-        # Clear just_selected after first draw
-        self.just_selected_hex = None
-
     def next_layout(self):
         s = (self.style + 1) % 3
         self.create_widgets(s)
@@ -116,17 +101,6 @@ def fetch_your_data():
     return aircraft_tracker.fetch_data()
 
 
-def single_update():
-    """
-    Do a single update:
-    - full initial redraw done once via radar.draw(..., sweep=False)
-    - subsequent calls can use radar.step(...) (advances one segment)
-    """
-    aircraft_list = fetch_your_data()
-    radar.update(aircraft_list)
-    return utime.ticks_ms()
-
-
 def scope_loop(once=False):
     """
     Continuous scope loop. Call from REPL or main.
@@ -135,7 +109,9 @@ def scope_loop(once=False):
     previous_aircraft = set()
     if radar.radar_scope:
         radar.radar_scope.draw_scope()
-    
+        if _cfg.WAYPOINTS:
+            radar.radar_scope.draw_waypoints(_cfg.WAYPOINTS)
+
     # Touch coordinates persist across loop iterations
     # Read only at end during sleep polling for simplicity
     x, y = 0, 0
@@ -220,12 +196,3 @@ def process_touch(x, y):
             radar.radar_scope.draw_scope()
         start = utime.ticks_ms()
         previous_aircraft = set()
-
-
-# Example: run a few steps for testing
-if __name__ == "__main__":
-    # RadarScope:
-    now = single_update()
-    # RadarSweepScope:
-    # sweep_loop(step_delay_ms=30)
-    # scope_loop()

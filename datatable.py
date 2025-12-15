@@ -240,6 +240,7 @@ class DataTable:
         if num_rows < self.state.max_rows:
             clear_y = start_y + num_rows * row_h
             clear_height = (self.state.max_rows - num_rows) * row_h - 1
+            print(f"clear: {num_rows=} {self.state.max_rows=} self.fb.fill_rectangle({self.x=} + 4, {clear_y}, {self.width=} - 8, {clear_height=}, self.cfg.BLACK)")
             self.fb.fill_rectangle(self.x + 4, clear_y, self.width - 8, clear_height, self.cfg.BLACK)
         
         # Update state

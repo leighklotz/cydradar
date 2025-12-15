@@ -37,6 +37,9 @@ class Radar:
         self.style = 0
         self.selected_hex = None  # Currently selected aircraft
         self.just_selected_hex = None  # Aircraft that was just tapped (to show circle)
+        self.MAX_RADAR_STYLE = 0
+        self.SPLIT_SCREEN_STYLE = 1
+        self.TABLE_ONLY_STYLE = 2
 
     def create_widgets(self, style=1):
         """
@@ -46,7 +49,7 @@ class Radar:
             style: The style to use for the widgets (0, 1, or 2).
         """
         self.style = style
-        if style == 0:
+        if style == self.MAX_RADAR_STYLE:
             # Max-sized scope on top and shorter table below
             self.radar_scope = RadarScope(
                 self.fb, center_x=120, center_y=116, radius=116,
@@ -56,7 +59,7 @@ class Radar:
                 self.fb, x=4, y=234, width=236, height=86,
                 table_font=self.table_font, compact=True
             )
-        elif style == 1:
+        elif style == self.SPLIT_SCREEN_STYLE:
             # Split screen, even sized scope on top and table below
             self.radar_scope = RadarScope(
                 self.fb, center_x=120, center_y=80, radius=70,
@@ -66,7 +69,7 @@ class Radar:
                 self.fb, x=4, y=170, width=236, height=150,
                 table_font=self.table_font, status_font=self.status_font
             )
-        elif style == 2:
+        elif style == self.TABLE_ONLY_STYLE:
             # Only Table
             self.radar_scope = None
             self.data_table = DataTable(
@@ -76,8 +79,7 @@ class Radar:
         else:
             raise ArgumentException(f"unknown {style=}")
 
-    def next_layout(self):
-        s = (self.style + 1) % 3
+    def switch_layout(self, s):
         self.create_widgets(s)
         # Selection persists across layout changes
         # Clear text cache when layout changes
@@ -93,13 +95,11 @@ fb.clear(_cfg.BLACK)
 status_font = XglcdFont('fonts/Neato5x7.c', 5, 7, letter_count=223)
 table_font = XglcdFont('fonts/FixedFont5x8.c', 5, 8, letter_count=223)
 radar = Radar(fb, _cfg, status_font, table_font)
-radar.create_widgets(0)  # Initial style
+radar.create_widgets(radar.MAX_RADAR_STYLE)
 aircraft_tracker = AircraftTracker()
-
 
 def fetch_your_data():
     return aircraft_tracker.fetch_data()
-
 
 def scope_loop(once=False):
     """
@@ -158,10 +158,11 @@ def touch_poll_wait():
 
 def process_touch(x, y):
     # Style 2 (full-screen table): any touch toggles layout, no selection
-    if radar.style == 2:
+    if radar.style == radar.TABLE_ONLY_STYLE:
         print("fullscreen table touch - changing layout")
         fb.clear(_cfg.BLACK)
-        radar.next_layout()
+        s = (radar.style + 1) % 3
+        radar.switch_layout(s)
         if radar.radar_scope:
             radar.radar_scope.draw_scope()
         start = utime.ticks_ms()
@@ -189,10 +190,19 @@ def process_touch(x, y):
                 radar.just_selected_hex = picked_hex
     elif radar.radar_scope:
         # Touch is completely outside data table - toggle layout
+        # left third -> rotate style left; right third; rotate style right; center-third: redisplay same style
         print("outside table touch - changing layout")
         fb.clear(_cfg.BLACK)
-        radar.next_layout()
+        s = radar.style
+        rr = radar.radar_scope.radius / 3
+        if x < (radar.radar_scope.center_x - rr):
+            s = (s - 1) % 3
+        elif x > (radar.radar_scope.center_x + rr):
+            s = (s + 1) % 3
+        radar.switch_layout(s)
         if radar.radar_scope:
             radar.radar_scope.draw_scope()
         start = utime.ticks_ms()
         previous_aircraft = set()
+    else:
+        printf("ignoring touch at {(x,y)=}")

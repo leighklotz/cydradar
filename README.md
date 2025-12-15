@@ -9,15 +9,15 @@ It fetches aircraft data from a local dump1090 instance (or similar) and visuali
 ## Features
 
 *   **ADS-B Decoding Visualization:**  Displays aircraft positions, altitude, speed, track, and callsign.
+*   **MicroPython Compatibility:** Specifically designed for MicroPython on ESP32 with the CYD library.
 *   **Radar Scope Display:** Presents aircraft as pips on a radar-style screen with range rings and crosshairs.
 *   **Aircraft Table:** Provides a tabular listing of nearby aircraft with key information.
 *   **Military Aircraft Identification:** Optionally highlights military aircraft in red.
-*   **Configurable Parameters:** Adjustable range, display colors, and other settings.
-*   **MicroPython Compatibility:** Specifically designed for MicroPython on ESP32 with the CYD library.
+*   **Configurable Parameters:** Adjustable range, display colors, waypoints, and other settings.
 *   **Touchscreen Controls:** 
-    *   Tap table header to switch layouts
+    *   Tap scope header to refresh (center) or to switch layouts: (left, right)
     *   Tap aircraft row to select/deselect (yellow highlight)
-    *   Tap radar scope to switch layouts
+    *   Tape elsewhere in table to deselect
     *   Selected aircraft show yellow highlight in both table and scope
 
 ## Hardware Requirements

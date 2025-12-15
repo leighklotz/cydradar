@@ -12,6 +12,9 @@ class _cfg:
     LAT=45.0
     LON=-120.0
     RADIUS_NM = 15
+    TRAIL_MIN_LENGTH = 4
+    TRAIL_MAX_LENGTH = 18
+    TRAIL_MAX_SPEED = 600
     BLINK_MILITARY = True
     FETCH_INTERVAL = 5
     MAX_TABLE_ROWS = 8

@@ -1,13 +1,14 @@
 # MicroPython UI components for CYD-based ILI9341 displays
 
-import gc
 import micropython
 import math
 import utime
 from ili9341 import color565
 from cfg import _cfg
 
-MEMORY_DEBUG=True
+MEMORY_DEBUG=False
+if MEMORY_DEBUG:
+    import gc
 
 class DrawState:
     """Encapsulates all drawing state for the data table."""
@@ -282,7 +283,6 @@ class DataTable:
         self.state.clear()
         if MEMORY_DEBUG:
             self.show_memory_stats()
-
 
     def pick_hex(self, x, y):
         """

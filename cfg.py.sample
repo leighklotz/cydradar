@@ -11,7 +11,7 @@ class _cfg:
     DUMP1090_URL='http://www.example.com:8080/aircraft.json'
     LAT=45.0
     LON=-120.0
-    RADIUS_NM = 10
+    RADIUS_NM = 15
     BLINK_MILITARY = True
     FETCH_INTERVAL = 5
     MAX_TABLE_ROWS = 8
@@ -27,8 +27,12 @@ class _cfg:
     WHITE = color565(255, 255, 255)
     LABEL_RING = False
     MIL_PREFIX_LIST = ['7CF']
-    WAYPOINTS = { 'PAO': (37.4611214,-122.1150467),
-                  'SFO': (37.6188056,-122.3754167),
-                  'SJC': (37.3629947,-121.9286206),
-                  'NUQ': (37.4161439,-122.0491292)
+    WAYPOINTS = { 'PAO': (37.4611214, -122.1150467),
+                  'SFO': (37.6188056, -122.3754167),
+                  'SJC': (37.3629947, -121.9286206),
+                  'NUQ': (37.4161439, -122.0491292),
+                  'SQL': (37.5118611, -122.2495311),
+                  'RHV': (37.3328611, -121.8198056),
+                  'OAK': (37.7259256, -122.2235919),
+                  'OSI': (37.3925000, -122.2813028)
                  }

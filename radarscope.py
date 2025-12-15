@@ -99,25 +99,10 @@ class RadarScope:
 
     def draw_scope(self):
         """Draw radar rings, crosshairs and aircraft. Does not clear entire screen."""
-        # range rings as closed polylines using fb.draw_lines
+        # range rings using draw_circle (much faster than polyline approach)
         for ring in range(1, 4):
-            start_ring_time = utime.ticks_ms()
             ring_radius = int((ring / 3) * self.radius)
-            coords = []
-            step = 30  # degree step for ring points (smaller = smoother, slower)
-            for deg in range(0, 360 + step, step):
-                rad = math.radians(deg % 360)
-                px = int(self.center_x + ring_radius * math.cos(rad))
-                py = int(self.center_y + ring_radius * math.sin(rad))
-                coords.append([px, py])
-            # ensure loop closed
-            if coords and coords[0] != coords[-1]:
-                coords.append(coords[0])
-            #print(coords)
-            end_calc_time = utime.ticks_ms()
-            self.fb.draw_lines(coords, self.cfg.DIM_GREEN)
-            end_draw_time = utime.ticks_ms()
-            print(f"calc={end_calc_time-start_ring_time}ms draw={end_draw_time-end_calc_time}ms")
+            self.fb.draw_circle(self.center_x, self.center_y, ring_radius, self.cfg.DIM_GREEN)
 
             # label ring
             if self.cfg.LABEL_RING:

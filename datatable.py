@@ -209,9 +209,10 @@ class DataTable:
             
             # Track: show with degree symbol (track is 0-359)
             if getattr(aircraft, "track", 0) and aircraft.track > 0:
-                track = "{:>3} ".format(int(aircraft.track)) # "° " fails to show up
+                # "° " fails to show up so use space
+                track = "{:>3} ".format(int(aircraft.track))
             else:
-                track = "   -"
+                track = " -  "
             
             # Squawk: handle None/empty safely
             squawk_val = getattr(aircraft, "squawk", None)

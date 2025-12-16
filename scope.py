@@ -135,3 +135,7 @@ class RadarScope:
         # center mark
         if False:
             self.fb.fill_circle(self.center_x, self.center_y, 2, self.cfg.BRIGHT_GREEN)
+
+        # waypoints
+        if self.cfg.WAYPOINTS:
+            self.draw_waypoints(self.cfg.WAYPOINTS)

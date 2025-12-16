@@ -109,8 +109,6 @@ def scope_loop(once=False):
     previous_aircraft = set()
     if radar.radar_scope:
         radar.radar_scope.draw_scope()
-        if _cfg.WAYPOINTS:
-            radar.radar_scope.draw_waypoints(_cfg.WAYPOINTS)
 
     # Touch coordinates persist across loop iterations
     # Read only at end during sleep polling for simplicity

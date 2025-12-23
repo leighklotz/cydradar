@@ -98,6 +98,11 @@ radar = Radar(fb, _cfg, status_font, table_font)
 radar.create_widgets(radar.MAX_RADAR_STYLE)
 aircraft_tracker = AircraftTracker()
 
+# Store last known data to avoid blank screens during layout switches
+last_aircraft_list = []
+last_status = "INITIALISING"
+last_update_ticks_ms = 0
+
 def fetch_your_data():
     return aircraft_tracker.fetch_data()
 
@@ -105,6 +110,8 @@ def scope_loop(once=False):
     """
     Continuous scope loop. Call from REPL or main.
     """
+    global last_aircraft_list, last_status, last_update_ticks_ms
+    
     start = utime.ticks_ms()
     previous_aircraft = set()
     if radar.radar_scope:
@@ -127,6 +134,11 @@ def scope_loop(once=False):
 
         if radar.data_table:
             radar.data_table.draw(aircraft_list, status="OK", last_update_ticks_ms=now, selected_hex=radar.selected_hex)
+
+        # Store current data for potential layout switches
+        last_aircraft_list = aircraft_list
+        last_status = "OK"
+        last_update_ticks_ms = now
 
         # Clear just_selected after first draw
         radar.just_selected_hex = None
@@ -155,6 +167,8 @@ def touch_poll_wait():
     return (0,0)
 
 def process_touch(x, y):
+    global last_aircraft_list, last_status, last_update_ticks_ms
+    
     # Style 2 (full-screen table): any touch toggles layout, no selection
     if radar.style == radar.TABLE_ONLY_STYLE:
         print("fullscreen table touch - changing layout")
@@ -163,6 +177,9 @@ def process_touch(x, y):
         radar.switch_layout(s)
         if radar.radar_scope:
             radar.radar_scope.draw_scope()
+        # Immediately redraw table with last known data to avoid blank screen
+        if radar.data_table and last_aircraft_list:
+            radar.data_table.draw(last_aircraft_list, status=last_status, last_update_ticks_ms=last_update_ticks_ms, selected_hex=radar.selected_hex)
         start = utime.ticks_ms()
         previous_aircraft = set()
     # Other modes: check table for selection, elsewhere for layout toggle
@@ -200,6 +217,9 @@ def process_touch(x, y):
         radar.switch_layout(s)
         if radar.radar_scope:
             radar.radar_scope.draw_scope()
+        # Immediately redraw table with last known data to avoid blank screen
+        if radar.data_table and last_aircraft_list:
+            radar.data_table.draw(last_aircraft_list, status=last_status, last_update_ticks_ms=last_update_ticks_ms, selected_hex=radar.selected_hex)
         start = utime.ticks_ms()
         previous_aircraft = set()
     else:

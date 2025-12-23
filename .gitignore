@@ -3,4 +3,6 @@ secrets.py
 old
 #*#
 *~
+__pycache__/
+*.pyc
 

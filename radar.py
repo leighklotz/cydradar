@@ -223,4 +223,4 @@ def process_touch(x, y):
         # Immediately redraw table with last known data to avoid blank screen
         redraw_table_with_cached_data()
     else:
-        printf("ignoring touch at {(x,y)=}")
+        print(f"ignoring touch at {(x,y)=}")

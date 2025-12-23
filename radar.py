@@ -104,7 +104,8 @@ last_status = "INITIALISING"
 last_update_ticks_ms = 0
 
 def fetch_your_data():
-    return aircraft_tracker.fetch_data()
+    aircraft_list = aircraft_tracker.fetch_data()
+    return aircraft_list, aircraft_tracker.status
 
 def redraw_table_with_cached_data():
     """Redraw the table with last known data to avoid blank screens during layout switches."""
@@ -131,18 +132,18 @@ def scope_loop(once=False):
         if x != 0 and y != 0:
             process_touch(x, y)
 
-        aircraft_list = fetch_your_data()
+        aircraft_list, status = fetch_your_data()
         now = utime.ticks_ms()
 
         if radar.radar_scope:
             radar.radar_scope.draw_planes(aircraft_list, previous_aircraft, selected_hex=radar.selected_hex, just_selected_hex=radar.just_selected_hex)
 
         if radar.data_table:
-            radar.data_table.draw(aircraft_list, status="OK", last_update_ticks_ms=now, selected_hex=radar.selected_hex)
+            radar.data_table.draw(aircraft_list, status=status, last_update_ticks_ms=now, selected_hex=radar.selected_hex)
 
         # Store current data for potential layout switches
         last_aircraft_list = aircraft_list
-        last_status = "OK"
+        last_status = status
         last_update_ticks_ms = now
 
         # Clear just_selected after first draw
@@ -184,8 +185,6 @@ def process_touch(x, y):
             radar.radar_scope.draw_scope()
         # Immediately redraw table with last known data to avoid blank screen
         redraw_table_with_cached_data()
-        start = utime.ticks_ms()
-        previous_aircraft = set()
     # Other modes: check table for selection, elsewhere for layout toggle
     elif radar.data_table.is_in_table_bounds(x, y):
         # Touch is within table bounds - handle selection only, never toggle layout
@@ -223,7 +222,5 @@ def process_touch(x, y):
             radar.radar_scope.draw_scope()
         # Immediately redraw table with last known data to avoid blank screen
         redraw_table_with_cached_data()
-        start = utime.ticks_ms()
-        previous_aircraft = set()
     else:
         printf("ignoring touch at {(x,y)=}")

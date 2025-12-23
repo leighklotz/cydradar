@@ -109,7 +109,7 @@ def fetch_your_data():
 
 def redraw_table_with_cached_data():
     """Redraw the table with last known data to avoid blank screens during layout switches."""
-    if radar.data_table and last_aircraft_list:
+    if radar.data_table:
         radar.data_table.draw(last_aircraft_list, status=last_status, last_update_ticks_ms=last_update_ticks_ms, selected_hex=radar.selected_hex)
 
 def scope_loop(once=False):

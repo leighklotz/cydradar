@@ -106,6 +106,11 @@ last_update_ticks_ms = 0
 def fetch_your_data():
     return aircraft_tracker.fetch_data()
 
+def redraw_table_with_cached_data():
+    """Redraw the table with last known data to avoid blank screens during layout switches."""
+    if radar.data_table and last_aircraft_list:
+        radar.data_table.draw(last_aircraft_list, status=last_status, last_update_ticks_ms=last_update_ticks_ms, selected_hex=radar.selected_hex)
+
 def scope_loop(once=False):
     """
     Continuous scope loop. Call from REPL or main.
@@ -178,8 +183,7 @@ def process_touch(x, y):
         if radar.radar_scope:
             radar.radar_scope.draw_scope()
         # Immediately redraw table with last known data to avoid blank screen
-        if radar.data_table and last_aircraft_list:
-            radar.data_table.draw(last_aircraft_list, status=last_status, last_update_ticks_ms=last_update_ticks_ms, selected_hex=radar.selected_hex)
+        redraw_table_with_cached_data()
         start = utime.ticks_ms()
         previous_aircraft = set()
     # Other modes: check table for selection, elsewhere for layout toggle
@@ -218,8 +222,7 @@ def process_touch(x, y):
         if radar.radar_scope:
             radar.radar_scope.draw_scope()
         # Immediately redraw table with last known data to avoid blank screen
-        if radar.data_table and last_aircraft_list:
-            radar.data_table.draw(last_aircraft_list, status=last_status, last_update_ticks_ms=last_update_ticks_ms, selected_hex=radar.selected_hex)
+        redraw_table_with_cached_data()
         start = utime.ticks_ms()
         previous_aircraft = set()
     else:

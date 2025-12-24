@@ -12,7 +12,7 @@ It fetches aircraft data from a local dump1090 instance (or similar) and visuali
 *   **MicroPython Compatibility:** Specifically designed for MicroPython on ESP32 with the CYD library.
 *   **Radar Scope Display:** Presents aircraft as pips on a radar-style screen with range rings and crosshairs.
 *   **Aircraft Table:** Provides a tabular listing of nearby aircraft with key information.
-*   **Military Aircraft Identification:** Optionally highlights military aircraft in red.
+*   **Military Aircraft Identification:** Highlights military aircraft in red.
 *   **Configurable Parameters:** Adjustable range, display colors, waypoints, and other settings.
 *   **Touchscreen Controls:** 
     *   Tap scope header to refresh (center) or to switch layouts: (left, right)

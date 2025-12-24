@@ -11,6 +11,9 @@ class RadarScope:
         font: XglcdFont-compatible font, or None to use draw_text8x8
         config: configuration object
         """
+
+        __slots__ = [ 'fb', 'center_x', 'center_y', 'radius', 'font', 'cfg' ]
+
         self.fb = fb
         self.center_x = center_x
         self.center_y = center_y
@@ -71,7 +74,7 @@ class RadarScope:
                     # draw_text8x8(x, y, text, color, background=...)
                     self.fb.draw_text8x8(x + 8, y - 12, callsign, label_color, background=self.cfg.BLACK)
 
-    def draw_planes(self, aircraft_list, previous_aircraft=None, selected_hex=None, just_selected_hex=None):
+    def draw_planes(self, aircraft_list, aircraft_to_label=None, previous_aircraft=None, selected_hex=None, just_selected_hex=None):
         """Draw planes
         
         Args:
@@ -81,21 +84,15 @@ class RadarScope:
             just_selected_hex: Aircraft that was just tapped (to draw selection circle)
         """
 
-        # blink state for military blips
-        blink_state = ((utime.ticks_ms() // 500) & 1) == 0
-
         for aircraft in aircraft_list:
             pos = self.lat_lon_to_screen(aircraft.lat, aircraft.lon)
             if pos:
                 x, y = pos
-                show_label = previous_aircraft is None or aircraft.hex_code not in previous_aircraft
+                show_label = aircraft in aircraft_to_label and (previous_aircraft is None or aircraft.hex_code not in previous_aircraft)
                 is_selected = (selected_hex is not None and aircraft.hex_code == selected_hex)
                 draw_circle = (just_selected_hex is not None and aircraft.hex_code == just_selected_hex)
-                if aircraft.is_military:
-                    if not self.cfg.BLINK_MILITARY or blink_state:
-                        self.draw_aircraft(aircraft, x, y, self.cfg.RED, self.cfg.DIM_GREEN, show_label=show_label, is_selected=is_selected, draw_selection_circle=draw_circle)
-                else:
-                    self.draw_aircraft(aircraft, x, y, self.cfg.BRIGHT_GREEN, self.cfg.DIM_GREEN, show_label=show_label, is_selected=is_selected, draw_selection_circle=draw_circle)
+                fg_color = (self.cfg.RED if aircraft.is_military else self.cfg.BRIGHT_GREEN)
+                self.draw_aircraft(aircraft, x, y, fg_color, self.cfg.DIM_GREEN, show_label=show_label, is_selected=is_selected, draw_selection_circle=draw_circle)
 
     def draw_waypoints(self, waypoint_list, show_label=True):
         if waypoint_list:
@@ -115,26 +112,18 @@ class RadarScope:
 
     def draw_scope(self):
         """Draw radar rings, crosshairs, and aircraft. Does not clear entire screen."""
+        range_nm = self.cfg.RADIUS_NM
+        label = "RANGE {}NM".format(range_nm)
+        self.fb.draw_text(self.fb.width - 64, 6, label, self.font, self.cfg.DIM_GREEN, background=self.cfg.BLACK)
+        self.fb.draw_rectangle((self.fb.width-64 - 1), (6 - 2), (64 - 1), 9, self.cfg.DIM_GREEN)
+
         for ring in range(1, 4):
             ring_radius = int((ring / 3) * self.radius)
             self.fb.draw_circle(self.center_x, self.center_y, ring_radius, self.cfg.DIM_GREEN)
 
-            # label ring
-            if self.cfg.LABEL_RING:
-                range_nm = int((ring / 3) * self.cfg.RADIUS_NM)
-                label = "{}NM".format(range_nm)
-                if self.font is not None:
-                    self.fb.draw_text(self.center_x + ring_radius - 20, self.center_y + 5, label, self.font, self.cfg.DIM_GREEN, self.cfg.BLACK)
-                else:
-                    self.fb.draw_text8x8(self.center_x + ring_radius - 20, self.center_y + 5, label, self.cfg.DIM_GREEN, background=self.cfg.BLACK)
-
         # crosshairs - two straight lines
         self.fb.draw_line(self.center_x - self.radius, self.center_y, self.center_x + self.radius, self.center_y, self.cfg.DIM_GREEN)
         self.fb.draw_line(self.center_x, self.center_y - self.radius, self.center_x, self.center_y + self.radius, self.cfg.DIM_GREEN)
-
-        # center mark
-        if False:
-            self.fb.fill_circle(self.center_x, self.center_y, 2, self.cfg.BRIGHT_GREEN)
 
         # waypoints
         if self.cfg.WAYPOINTS:

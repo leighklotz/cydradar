@@ -5,20 +5,11 @@ import json
 from cfg import _cfg
 from utils import calculate_distance_bearing
 
-
-
-SAMPLE_AIRCRAFT_JSON = """
-{ "now" : 1765419480.0,
-  "messages" : 145,
-  "aircraft" : [
-    {"hex":"a33eda","altitude":19650,"vert_rate":3392,"track":134,"speed":410,"mlat":[],"tisb":[],"messages":13,"seen":0.9,"rssi":-8.8},
-    {"hex":"407993","squawk":"6532","flight":"BAW28K  ","lat":37.461090,"lon":-122.152600,"nucp":7,"seen_pos":0.7,"altitude":4550,"vert_rate":-896,"track":26,"speed":189,"category":"A5","mlat":[],"tisb":[],"messages":121,"seen":0.0,"rssi":-3.4},
-    {"hex":"a55785","lat":37.323443,"lon":-122.295745,"nucp":7,"seen_pos":24.9,"altitude":13775,"vert_rate":2496,"track":136,"speed":389,"mlat":[],"tisb":[],"messages":11,"seen":23.5,"rssi":-6.9}
-  ]
-}
-"""
 class Aircraft:
     """Aircraft data from tar1090"""
+    __slots__ = [ 'hex_code', 'callsign', 'category', 'squawk', 'lat', 'lon', 'altitude', 'speed', 'vert_rate', 'track', 'distance', 'bearing', 'is_military' ]
+
+
     def __init__(self, hex_code: str, callsign: str, category: str, squawk: str, lat: float, lon: float, altitude: int, speed: int, vert_rate: int, track: float, distance: float, bearing: float, is_military: bool = False):
         self.hex_code = hex_code
         self.callsign = callsign
@@ -62,15 +53,3 @@ class Aircraft:
             is_military=is_military
         )
 
-def test_it():
-    for data in json.loads(SAMPLE_AIRCRAFT_JSON)["aircraft"]:
-        print(data)
-        craft = Aircraft.from_dict(data)
-        if craft is not None:
-            print(f"=> {craft.__dict__}")
-        else:
-            print("=> None")
-        print()
-
-if __name__ == "__main__":
-    test_it()

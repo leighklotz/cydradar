@@ -11,6 +11,8 @@ if MEMORY_DEBUG:
     import gc
 
 class DrawState:
+    __slots__ = [ 'rows', 'text', 'row_state']
+
     """Encapsulates all drawing state for the data table."""
     def __init__(self):
         # Row layout for hit testing: (hex_code, y_pos, row_height)
@@ -19,8 +21,6 @@ class DrawState:
         self.text = {}
         # Row state tracking: y_pos -> (hex_code, is_selected)
         self.row_state = {}
-        # Calculated maximum rows that can fit
-        self.max_rows = 0
     
     def clear(self):
         """Clear all state."""
@@ -57,6 +57,9 @@ class DrawState:
 
 class DataTable:
     """Aircraft data table component using CYD display primitives."""
+
+    __slots__ = ['fb', 'x', 'y', 'width', 'height', 'table_font', 'status_font', 'cfg', 'table_font_h', 'status_font_h', 'compact', 'state', 'max_rows' ]
+
     def __init__(self, fb, x, y, width, height,
                  table_font=None, status_font=None,
                  compact=False,
@@ -78,7 +81,7 @@ class DataTable:
         self.table_font_h = getattr(table_font, "height", config.DEFAULT_FONT_HEIGHT)
         self.status_font_h = getattr(status_font, "height", config.DEFAULT_FONT_HEIGHT)
         self.compact = compact
-        # Consolidated state management
+        self.max_rows = 0
         self.state = DrawState()
 
     def draw(self, aircraft_list, status, last_update_ticks_ms, selected_hex=None):
@@ -136,18 +139,18 @@ class DataTable:
             footer_height = status_info_lines * self.status_font_h + 8
             available_height = self.height - (start_y - self.y) - footer_height
         
-        self.state.max_rows = max(1, int(available_height / row_h))
-        print(f"{self.state.max_rows=}")
+        self.max_rows = max(1, int(available_height / row_h))
+        print(f"{self.max_rows=}")
         
         # rows (sorted by distance)
         sorted_ac = sorted(aircraft_list, key=lambda a: getattr(a, "distance", 9999))
-        num_rows = min(len(sorted_ac), self.state.max_rows)
+        num_rows = min(len(sorted_ac), self.max_rows)
         
         # Track which positions we're drawing to
         new_text = {}
         new_row_state = {}
         
-        for i, aircraft in enumerate(sorted_ac[:self.state.max_rows]):
+        for i, aircraft in enumerate(sorted_ac[:self.max_rows]):
             # print(f"table: {i=} {aircraft.__dict__}")
             y_pos = start_y + i * row_h
             
@@ -233,16 +236,19 @@ class DataTable:
                 cache_key = (col_positions[j], y_pos)
                 
                 # Draw if: text changed OR background was just updated (which cleared the text)
+                # print(f"if {needs_bg_update=} or {self.state.get_text(col_positions[j], y_pos)} != {text_str}:")
                 if needs_bg_update or self.state.get_text(col_positions[j], y_pos) != text_str:
+                    # print("drawing")
                     self.fb.draw_text(col_positions[j], y_pos, text_str, self.table_font, text_color, bg_color)
                 
+                # print(f"new_text[{cache_key}] = {text_str}")
                 new_text[cache_key] = text_str
         
         # Clear remaining rows
-        if num_rows < self.state.max_rows:
+        if num_rows < self.max_rows:
             clear_y = start_y + num_rows * row_h
-            clear_height = (self.state.max_rows - num_rows) * row_h - 1
-            print(f"clear: {num_rows=} {self.state.max_rows=} self.fb.fill_rectangle({self.x=} + 4, {clear_y}, {self.width=} - 8, {clear_height=}, self.cfg.BLACK)")
+            clear_height = (self.max_rows - num_rows) * row_h - 1
+            print(f"clear: {num_rows=} {self.max_rows=} self.fb.fill_rectangle({self.x=} + 4, {clear_y}, {self.width=} - 8, {clear_height=}, self.cfg.BLACK)")
             self.fb.fill_rectangle(self.x + 4, clear_y, self.width - 8, clear_height, self.cfg.BLACK)
         
         # Update state

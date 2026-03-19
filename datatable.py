@@ -6,13 +6,7 @@ import utime
 from ili9341 import color565
 from cfg import _cfg
 
-MEMORY_DEBUG=False
-if MEMORY_DEBUG:
-    import gc
-
 class DrawState:
-    __slots__ = [ 'rows', 'text', 'row_state']
-
     """Encapsulates all drawing state for the data table."""
     def __init__(self):
         # Row layout for hit testing: (hex_code, y_pos, row_height)
@@ -57,8 +51,6 @@ class DrawState:
 
 class DataTable:
     """Aircraft data table component using CYD display primitives."""
-
-    __slots__ = ['fb', 'x', 'y', 'width', 'height', 'table_font', 'status_font', 'cfg', 'table_font_h', 'status_font_h', 'compact', 'state', 'max_rows' ]
 
     def __init__(self, fb, x, y, width, height,
                  table_font=None, status_font=None,
@@ -140,7 +132,7 @@ class DataTable:
             available_height = self.height - (start_y - self.y) - footer_height
         
         self.max_rows = max(1, int(available_height / row_h))
-        print(f"{self.max_rows=}")
+        print(f"{self.max_rows=} {len(aircraft_list)=}")
         
         # rows (sorted by distance)
         sorted_ac = sorted(aircraft_list, key=lambda a: getattr(a, "distance", 9999))
@@ -231,7 +223,6 @@ class DataTable:
             bg_color = self.cfg.YELLOW if is_selected else self.cfg.BLACK
             
             for j, val in enumerate(cols):
-                # Fields are now properly sized with formatting, no extra padding needed
                 text_str = val
                 cache_key = (col_positions[j], y_pos)
                 
@@ -248,12 +239,13 @@ class DataTable:
         if num_rows < self.max_rows:
             clear_y = start_y + num_rows * row_h
             clear_height = (self.max_rows - num_rows) * row_h - 1
-            print(f"clear: {num_rows=} {self.max_rows=} self.fb.fill_rectangle({self.x=} + 4, {clear_y}, {self.width=} - 8, {clear_height=}, self.cfg.BLACK)")
+            print(f"clear: {num_rows=}<{self.max_rows=}: self.fb.fill_rectangle({self.x=} + 4, {clear_y}, {self.width=} - 8, {clear_height=}, self.cfg.BLACK)")
             self.fb.fill_rectangle(self.x + 4, clear_y, self.width - 8, clear_height, self.cfg.BLACK)
         
         # Update state
         self.state.text = new_text
         self.state.row_state = new_row_state
+        print(f"* update state: {self.state.text=} {self.state.row_state=}")
 
         if not self.compact:
             # footer status
@@ -281,15 +273,10 @@ class DataTable:
                     self.fb.draw_text(self.x + 6, status_y + i * self.status_font_h, s, self.status_font, color, self.cfg.BLACK)
                 else:
                     self.fb.draw_text8x8(self.x + 6, status_y + i * self.status_font_h, s, color, background=self.cfg.BLACK)
-    
-        if MEMORY_DEBUG:
-            self.show_memory_stats()
 
     def clear_cache(self):
         """Clear the drawing state, called when screen is cleared."""
         self.state.clear()
-        if MEMORY_DEBUG:
-            self.show_memory_stats()
 
     def pick_hex(self, x, y):
         """
@@ -317,8 +304,6 @@ class DataTable:
         
         return None
     
-
-    
     def is_in_table_bounds(self, x, y):
         """
         Check if touch is anywhere within the table bounds (header or data area).
@@ -327,16 +312,3 @@ class DataTable:
         return (x >= self.x and x < self.x + self.width and 
                 y >= self.y and y < self.y + self.height)
 
-    def show_memory_stats(self):
-        print("gc:")
-        # Force garbage collection to free up memory
-        gc.collect()
-        # Get the number of bytes currently allocated
-        allocated_memory = gc.mem_alloc()
-        # Get the number of free bytes available in the heap
-        free_memory = gc.mem_free()
-        print(f"Allocated memory: {allocated_memory} bytes")
-        print(f"Free memory: {free_memory} bytes")
-        print(f"Total heap size: {allocated_memory + free_memory} bytes")
-        # Print a detailed summary of RAM utilization (optional)
-        micropython.mem_info()

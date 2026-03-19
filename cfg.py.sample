@@ -18,7 +18,7 @@ class _cfg:
     FETCH_INTERVAL = 5
     MAX_TABLE_ROWS = 8
     DEFAULT_FONT_HEIGHT = 8
-    SCREEN_DELAY_SECONDS = 60
+    MIN_FETCH_TIME = 1000
     # Color constants (16-bit RGB565 values)
     BRIGHT_GREEN = color565(0, 255, 0)
     DIM_GREEN = color565(0, 128, 0)

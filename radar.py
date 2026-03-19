@@ -1,12 +1,13 @@
 from cydr import CYD
 
 import micropython
+import gc
+import sys
 
 import utime
 
 from xglcd_font import XglcdFont
 from datatable import DataTable
-from aircraft import Aircraft
 from cfg import _cfg
 from scope import RadarScope
 from fetch import AircraftTracker
@@ -20,9 +21,6 @@ class Radar:
     MAX_RADAR_STYLE = 0
     SPLIT_SCREEN_STYLE = 1
     TABLE_ONLY_STYLE = 2
-
-    __slots__ = [ 'cyd', 'fb', 'config', 'status_font', 'table_font', 'radar_scope', 'data_table', 'style', 'selected_hex', 'just_selected_hex', 'aircraft_tracker',
-                  'previous_aircraft' ]
 
     def __init__(self, cyd, config, status_font, table_font, aircraft_tracker):
         """
@@ -113,50 +111,66 @@ class Radar:
                 self.process_touch(x, y)
 
             aircraft_list = None
-            aircraft_list = self.aircraft_tracker.fetch_data(max_craft=40)
-            aircraft_to_label = aircraft_list[0:(self.data_table.max_rows or 5)]
-            # print(f"aircraft_list={len(aircraft_list)} aircraft_to_label={len(aircraft_to_label)}")
+            gc.collect()
+            # print(micropython.mem_info())
+            aircraft_list = self.aircraft_tracker.fetch_data(max_craft=16)       # magic constants
+            aircraft_to_label = aircraft_list[0:(self.data_table.max_rows or 5)] # magic constants
+
             now = utime.ticks_ms()
 
-            if self.radar_scope:
-                self.radar_scope.draw_planes(aircraft_list, aircraft_to_label,
-                                             self.previous_aircraft, selected_hex=self.selected_hex, just_selected_hex=self.just_selected_hex)
-
-            # poll
             x, y = self.cyd.touches()
             if x != 0 and y != 0:
                 continue
 
+            if self.radar_scope:
+                self.radar_scope.draw_planes(aircraft_list, aircraft_to_label,
+                                             self.previous_aircraft, selected_hex=self.selected_hex, just_selected_hex=self.just_selected_hex)
+                x, y = self.cyd.touches()
+                if x != 0 and y != 0:
+                    continue
+
             if self.data_table:
                 self.data_table.draw(aircraft_list, status="OK", last_update_ticks_ms=now, selected_hex=self.selected_hex)
+                x, y = self.cyd.touches()
+                if x != 0 and y != 0:
+                    continue
 
             # Clear just_selected after first draw
             self.just_selected_hex = None
 
             self.previous_aircraft.update(craft.hex_code for craft in aircraft_list if craft.hex_code is not None)
-            # print(f"* len(self.previous_aircraft)={len(self.previous_aircraft)}")
-            # print(micropython.mem_info())
-
-            # x,y = self.touch_poll_wait()
             x, y = self.cyd.touches()
-            end_time = utime.ticks_ms()
-            print(f"loop time { end_time - start_time }ms")
+            if x != 0 and y != 0:
+                continue
 
-#    def touch_poll_wait(self, t):
-#        # Sleep with touch polling for better responsiveness
-#        # Reset touch coordinates, then poll during sleep
-#        x, y = 0, 0
-#        sleep_remaining = 1000
-#        sleep_chunk = 100
-#        while sleep_remaining > 0:
-#            utime.sleep_ms(min(sleep_chunk, sleep_remaining))
-#            sleep_remaining -= sleep_chunk
-#
-#            # Check for touch during sleep - read touch only here
-#            x, y = self.cyd.touches()
-#            if x != 0 and y != 0:
-#                return (x,y)
-#        return (0,0)
+            # respect MIN_FETCH_TIME if the loop was faster; otherwise, do not delay
+            end_time = utime.ticks_ms()
+            loop_time = end_time - start_time
+            waiting_time = _cfg.MIN_FETCH_TIME - loop_time
+            if (waiting_time <= 0):
+                print(f"{loop_time=}ms")
+            else:
+                print(f"{loop_time=} < {_cfg.MIN_FETCH_TIME=} so {waiting_time=}ms")
+                self.touch_poll_wait(waiting_time)
+
+
+    def touch_poll_wait(self, waiting_time = 1000):
+        # Sleep with touch polling for better responsiveness
+        # Reset touch coordinates, then poll during sleep
+        x, y = 0, 0
+        sleep_remaining = waiting_time
+        sleep_chunk = 100
+        while sleep_remaining > 0:
+            utime.sleep_ms(min(sleep_chunk, sleep_remaining))
+            sleep_remaining -= sleep_chunk
+
+            # Check for touch during sleep - read touch only here
+            x, y = self.cyd.touches()
+            if x != 0 and y != 0:
+                return (x,y)
+        return (0,0)
+
+
 
     def process_touch(self, x, y):
         # Style 2 (full-screen table): any touch toggles layout, no selection
@@ -219,8 +233,6 @@ class Radar:
 
 
 class App:
-    __slots__ = [ 'cyd', 'status_font', 'table_font', 'aircraft_tracker', 'radar' ]
-
     def __init__(self):
         # initialize display
         self.cyd = CYD(display_width=240, display_height=320, rotation=180)

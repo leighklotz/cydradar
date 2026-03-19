@@ -12,8 +12,6 @@ class RadarScope:
         config: configuration object
         """
 
-        __slots__ = [ 'fb', 'center_x', 'center_y', 'radius', 'font', 'cfg' ]
-
         self.fb = fb
         self.center_x = center_x
         self.center_y = center_y

@@ -2,13 +2,13 @@ import math
 import utime
 
 class RadarScope:
-    """Radar display component using CYD display primitives (expects fb=cyd.display)."""
+    """Radar display component using PicoGraphics display primitives (expects fb=PicoDisplay wrapper)."""
     def __init__(self, fb, center_x, center_y, radius, font=None, config=None):
         """
-        fb: cyd.display instance
+        fb: PicoDisplay wrapper instance
         center_x, center_y: center pixel coordinates on the display
         radius: radius in pixels for the radar circle
-        font: XglcdFont-compatible font, or None to use draw_text8x8
+        font: PixelFont instance, or None to use draw_text8x8
         config: configuration object
         """
 
@@ -112,8 +112,13 @@ class RadarScope:
         """Draw radar rings, crosshairs, and aircraft. Does not clear entire screen."""
         range_nm = self.cfg.RADIUS_NM
         label = "RANGE {}NM".format(range_nm)
-        self.fb.draw_text(self.fb.width - 64, 6, label, self.font, self.cfg.DIM_GREEN, background=self.cfg.BLACK)
-        self.fb.draw_rectangle((self.fb.width-64 - 1), (6 - 2), (64 - 1), 9, self.cfg.DIM_GREEN)
+        font_w = self.font.width if self.font is not None else 6
+        font_h = self.font.height if self.font is not None else 8
+        label_w = len(label) * font_w + 4
+        label_x = self.fb.width - label_w - 2
+        label_y = 6
+        self.fb.draw_text(label_x, label_y, label, self.font, self.cfg.DIM_GREEN, background=self.cfg.BLACK)
+        self.fb.draw_rectangle(label_x - 1, label_y - 2, label_w + 1, font_h + 3, self.cfg.DIM_GREEN)
 
         for ring in range(1, 4):
             ring_radius = int((ring / 3) * self.radius)

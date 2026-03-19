@@ -1,9 +1,8 @@
-# MicroPython UI components for CYD-based ILI9341 displays
+# MicroPython UI components for Pimoroni Presto (PicoGraphics) displays
 
 import micropython
 import math
 import utime
-from ili9341 import color565
 from cfg import _cfg
 
 class DrawState:
@@ -50,16 +49,16 @@ class DrawState:
         self.text[(x, y)] = text
 
 class DataTable:
-    """Aircraft data table component using CYD display primitives."""
+    """Aircraft data table component using PicoGraphics display primitives."""
 
     def __init__(self, fb, x, y, width, height,
                  table_font=None, status_font=None,
                  compact=False,
                  config=_cfg):
         """
-        fb: cyd.display instance
+        fb: PicoDisplay wrapper instance
         x,y,width,height: table rectangle
-        font: XglcdFont-compatible font, or None to use draw_text8x8
+        table_font: PixelFont instance, or None to use draw_text8x8
         compact: omit the status stanza and just show the air traffic, etc.
         """
         self.fb = fb
@@ -292,8 +291,7 @@ class DataTable:
         hex_code = self.state.find_row(y)
         if hex_code:
             # give quick feedback about where the user touched, since display is slow
-            # todo: this is outside the row, and that will leave noise on the screen
-            self.fb.draw_rectangle(8, y, 220, 1, _cfg.YELLOW)
+            self.fb.draw_rectangle(self.x + 4, y, self.width - 8, 2, _cfg.YELLOW)
             return hex_code
 
         

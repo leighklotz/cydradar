@@ -1,12 +1,3 @@
-try:
-    from ili9341 import color565
-except:
-    def color565(r,g,b):
-        r = (r >> 5) << 11
-        g = (g >> 5) << 5
-        b = (b >> 5)
-        return r | g | b
-
 class _cfg:
     DUMP1090_URL='http://www.example.com:8080/aircraft.json'
     LAT=45.0
@@ -19,14 +10,16 @@ class _cfg:
     MAX_TABLE_ROWS = 8
     DEFAULT_FONT_HEIGHT = 8
     MIN_FETCH_TIME = 1000
-    # Color constants (16-bit RGB565 values)
-    BRIGHT_GREEN = color565(0, 255, 0)
-    DIM_GREEN = color565(0, 128, 0)
-    RED = color565(255, 0, 0)
-    AMBER = color565(255, 191, 0)
-    YELLOW = color565(255, 255, 0)
-    BLACK = color565(0, 0, 0)
-    WHITE = color565(255, 255, 255)
+    # Color constants as (r, g, b) tuples.
+    # At app startup these are converted to PicoGraphics pen indices via
+    # display.create_pen(r, g, b) and replaced in-place on this class.
+    BRIGHT_GREEN = (0, 255, 0)
+    DIM_GREEN = (0, 128, 0)
+    RED = (255, 0, 0)
+    AMBER = (255, 191, 0)
+    YELLOW = (255, 255, 0)
+    BLACK = (0, 0, 0)
+    WHITE = (255, 255, 255)
     LABEL_RING = False
     MIL_PREFIX_LIST = ['7CF']
     WAYPOINTS = { 'PAO': (37.4611214, -122.1150467),

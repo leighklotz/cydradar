@@ -1,4 +1,4 @@
-from cydr import CYD
+from presto import Presto
 
 import micropython
 import gc
@@ -6,11 +6,14 @@ import sys
 
 import utime
 
-from xglcd_font import XglcdFont
+from display_wrapper import PixelFont, PicoDisplay
 from datatable import DataTable
 from cfg import _cfg
 from scope import RadarScope
 from fetch import AircraftTracker
+
+# Color attributes on _cfg that need to be converted to PicoGraphics pen indices.
+_COLOR_ATTRS = ['BRIGHT_GREEN', 'DIM_GREEN', 'RED', 'AMBER', 'YELLOW', 'BLACK', 'WHITE']
 
 
 class Radar:
@@ -22,20 +25,20 @@ class Radar:
     SPLIT_SCREEN_STYLE = 1
     TABLE_ONLY_STYLE = 2
 
-    def __init__(self, cyd, config, status_font, table_font, aircraft_tracker):
+    def __init__(self, presto, display, config, status_font, table_font, aircraft_tracker):
         """
         Initializes the Radar object.
 
         Args:
-            cyd: the cyd device
-            fb: The framebuffer object for drawing.
+            presto: the Presto device (used for touch and display update)
+            display: PicoDisplay wrapper (used for drawing)
             config: The configuration object.
-            status_font: The font for status messages.
-            table_font: The font for the data table.
+            status_font: PixelFont for status messages.
+            table_font: PixelFont for the data table.
             aircraft_tracker: the source of data
         """
-        self.cyd = cyd
-        self.fb = cyd.display
+        self.presto = presto
+        self.fb = display
         self.config = config
         self.status_font = status_font
         self.table_font = table_font
@@ -52,45 +55,65 @@ class Radar:
         """
         Creates the radar scope and data table widgets based on the specified style.
 
+        Layout is calculated for a 480x480 Presto display.
+
         Args:
             style: The style to use for the widgets (0, 1, or 2).
         """
         self.style = style
+        w = self.fb.width
+        h = self.fb.height
         if style == self.MAX_RADAR_STYLE:
-            # Max-sized scope on top and shorter table below
+            # Large scope filling most of the square display, compact table below
+            radius = w // 2 - 30
+            cx = w // 2
+            cy = radius + 10
+            table_y = cy + radius + 10
+            table_h = h - table_y - 5
             self.radar_scope = RadarScope(
-                self.fb, center_x=120, center_y=116, radius=116,
+                self.fb, center_x=cx, center_y=cy, radius=radius,
                 font=self.status_font, config=self.config
             )
             self.data_table = DataTable(
-                self.fb, x=4, y=234, width=236, height=86,
+                self.fb, x=5, y=table_y, width=w - 10, height=table_h,
                 table_font=self.table_font, compact=True
             )
         elif style == self.SPLIT_SCREEN_STYLE:
-            # Split screen, even sized scope on top and table below
+            # Scope on top half, table on bottom half
+            half_h = h // 2
+            radius = half_h // 2 - 10
+            cx = w // 2
+            cy = half_h // 2
             self.radar_scope = RadarScope(
-                self.fb, center_x=120, center_y=80, radius=70,
+                self.fb, center_x=cx, center_y=cy, radius=radius,
                 font=self.status_font, config=self.config
             )
             self.data_table = DataTable(
-                self.fb, x=4, y=170, width=236, height=150,
+                self.fb, x=5, y=half_h, width=w - 10, height=half_h - 5,
                 table_font=self.table_font, status_font=self.status_font
             )
         elif style == self.TABLE_ONLY_STYLE:
-            # Only Table
+            # Full-screen table
             self.radar_scope = None
             self.data_table = DataTable(
-                self.fb, x=4, y=4, width=236, height=312,
+                self.fb, x=5, y=5, width=w - 10, height=h - 10,
                 table_font=self.table_font, status_font=self.status_font
             )
         else:
-            raise ArgumentException(f"unknown {style=}")
+            raise ValueError(f"unknown {style=}")
 
     def switch_layout(self, s):
         self.create_widgets(s)
         # Selection persists across layout changes
         # Clear text cache when layout changes
         self.data_table.clear_cache()
+
+    def _touch_read(self):
+        """Read current touch position.  Returns (x, y) or (0, 0) if no touch."""
+        self.presto.touch.poll()
+        if self.presto.touch.state:
+            return self.presto.touch.x, self.presto.touch.y
+        return 0, 0
 
     def main(self):
         """
@@ -118,39 +141,41 @@ class Radar:
 
             now = utime.ticks_ms()
 
-            x, y = self.cyd.touches()
+            x, y = self._touch_read()
             if x != 0 and y != 0:
                 continue
 
             if self.radar_scope:
                 self.radar_scope.draw_planes(aircraft_list, aircraft_to_label,
                                              self.previous_aircraft, selected_hex=self.selected_hex, just_selected_hex=self.just_selected_hex)
-                x, y = self.cyd.touches()
+                x, y = self._touch_read()
                 if x != 0 and y != 0:
+                    self.presto.update()
                     continue
 
             if self.data_table:
                 self.data_table.draw(aircraft_list, status="OK", last_update_ticks_ms=now, selected_hex=self.selected_hex)
-                x, y = self.cyd.touches()
+                x, y = self._touch_read()
                 if x != 0 and y != 0:
+                    self.presto.update()
                     continue
 
             # Clear just_selected after first draw
             self.just_selected_hex = None
 
             self.previous_aircraft.update(craft.hex_code for craft in aircraft_list if craft.hex_code is not None)
-            x, y = self.cyd.touches()
+            x, y = self._touch_read()
             if x != 0 and y != 0:
+                self.presto.update()
                 continue
+
+            self.presto.update()
 
             # respect MIN_FETCH_TIME if the loop was faster; otherwise, do not delay
             end_time = utime.ticks_ms()
             loop_time = end_time - start_time
             waiting_time = _cfg.MIN_FETCH_TIME - loop_time
-            if (waiting_time <= 0):
-                print(f"{loop_time=}ms")
-            else:
-                print(f"{loop_time=} < {_cfg.MIN_FETCH_TIME=} so {waiting_time=}ms")
+            if waiting_time > 0:
                 self.touch_poll_wait(waiting_time)
 
 
@@ -165,7 +190,7 @@ class Radar:
             sleep_remaining -= sleep_chunk
 
             # Check for touch during sleep - read touch only here
-            x, y = self.cyd.touches()
+            x, y = self._touch_read()
             if x != 0 and y != 0:
                 return (x,y)
         return (0,0)
@@ -229,22 +254,38 @@ class Radar:
                 self.radar_scope.draw_scope()
             start = utime.ticks_ms()
         else:
-            printf("ignoring touch at {(x,y)=}")
+            print(f"ignoring touch at {(x,y)=}")
 
 
 class App:
     def __init__(self):
-        # initialize display
-        self.cyd = CYD(display_width=240, display_height=320, rotation=180)
-        self.cyd.display.clear(_cfg.BLACK)
+        # Initialize Presto (handles WiFi via EzWiFi reading secrets.py)
+        self.presto = Presto()
+        self.presto.connect()
 
-        self.status_font = XglcdFont('fonts/Neato5x7.c', 5, 7, letter_count=223)
-        self.table_font = XglcdFont('fonts/FixedFont5x8.c', 5, 8, letter_count=223)
+        display_raw = self.presto.display
+
+        # Convert config color tuples to PicoGraphics pen indices in-place
+        for attr in _COLOR_ATTRS:
+            rgb = getattr(_cfg, attr)
+            if isinstance(rgb, tuple):
+                setattr(_cfg, attr, display_raw.create_pen(*rgb))
+
+        # Wrap the PicoGraphics display with the CYD-compatible API
+        self.display = PicoDisplay(display_raw)
+
+        # Clear screen with black
+        self.display.clear(_cfg.BLACK)
+        self.presto.update()
+
+        # Fonts: PixelFont(scale=1) -> 8 px tall, ~6 px wide per character
+        self.status_font = PixelFont(scale=1)
+        self.table_font = PixelFont(scale=1)
 
         # Create the aircraft tracker
         self.aircraft_tracker = AircraftTracker()
-        # create radar object
-        self.radar = Radar(self.cyd, _cfg, self.status_font, self.table_font, self.aircraft_tracker)
+        # Create radar object
+        self.radar = Radar(self.presto, self.display, _cfg, self.status_font, self.table_font, self.aircraft_tracker)
         self.radar.create_widgets(Radar.MAX_RADAR_STYLE)
 
     def main(self):

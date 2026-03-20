@@ -1,9 +1,8 @@
-# MicroPython UI components for CYD-based ILI9341 displays
+# MicroPython UI components for Pimoroni Presto (PicoGraphics) displays
 
 import micropython
 import math
 import utime
-from ili9341 import color565
 from cfg import _cfg
 
 class DrawState:
@@ -50,16 +49,16 @@ class DrawState:
         self.text[(x, y)] = text
 
 class DataTable:
-    """Aircraft data table component using CYD display primitives."""
+    """Aircraft data table component using PicoGraphics display primitives."""
 
     def __init__(self, fb, x, y, width, height,
                  table_font=None, status_font=None,
                  compact=False,
                  config=_cfg):
         """
-        fb: cyd.display instance
+        fb: PicoDisplay wrapper instance
         x,y,width,height: table rectangle
-        font: XglcdFont-compatible font, or None to use draw_text8x8
+        table_font: PixelFont instance, or None to use draw_text8x8
         compact: omit the status stanza and just show the air traffic, etc.
         """
         self.fb = fb
@@ -94,7 +93,7 @@ class DataTable:
             self.fb.draw_text8x8(title_x, self.y + 4, title, self.cfg.AMBER, background=self.cfg.BLACK)
 
         # headers and column positions
-        headers_y = self.y + 14
+        headers_y = self.y + self.table_font_h + 6  # below title, with small gap
         headers = ["CALL", "  ALT", "SPD", "DIST", "TRK", "SQUAWK"]
         total_width = self.width - 10
         col_widths = [0.28, 0.19, 0.12, 0.15, 0.12, 0.13]
@@ -104,7 +103,6 @@ class DataTable:
             w = int(total_width * ratio)
             col_positions.append(current_x)
             current_x += w
-        print(f"{total_width=} {col_widths=} {col_positions=}")
 
         # draw headers
         for i, h in enumerate(headers):
@@ -132,7 +130,6 @@ class DataTable:
             available_height = self.height - (start_y - self.y) - footer_height
         
         self.max_rows = max(1, int(available_height / row_h))
-        print(f"{self.max_rows=} {len(aircraft_list)=}")
         
         # rows (sorted by distance)
         sorted_ac = sorted(aircraft_list, key=lambda a: getattr(a, "distance", 9999))
@@ -239,13 +236,11 @@ class DataTable:
         if num_rows < self.max_rows:
             clear_y = start_y + num_rows * row_h
             clear_height = (self.max_rows - num_rows) * row_h - 1
-            print(f"clear: {num_rows=}<{self.max_rows=}: self.fb.fill_rectangle({self.x=} + 4, {clear_y}, {self.width=} - 8, {clear_height=}, self.cfg.BLACK)")
             self.fb.fill_rectangle(self.x + 4, clear_y, self.width - 8, clear_height, self.cfg.BLACK)
         
         # Update state
         self.state.text = new_text
         self.state.row_state = new_row_state
-        print(f"* update state: {self.state.text=} {self.state.row_state=}")
 
         if not self.compact:
             # footer status
@@ -260,10 +255,8 @@ class DataTable:
                 "STATUS: {}".format(status),
                 "CONTACTS: {} ({} MIL)".format(len(aircraft_list), military_count),
                 "RANGE: {}NM".format(self.cfg.RADIUS_NM),
-                "TEXT_CACHE: {}".format(len(self.state.text)),
-                "ROW_STATE_CACHE: {}".format(len(self.state.row_state)),
-#                "INTERVAL: {}S".format(self.cfg.FETCH_INTERVAL),
-#                "NEXT UPDATE: {}".format(countdown_text),
+                "INTERVAL: {}S".format(self.cfg.FETCH_INTERVAL),
+                "NEXT UPDATE: {}".format(countdown_text),
             ]
 
             status_y = self.y + self.height - (len(status_info) * self.status_font_h) - 4
@@ -292,8 +285,7 @@ class DataTable:
         hex_code = self.state.find_row(y)
         if hex_code:
             # give quick feedback about where the user touched, since display is slow
-            # todo: this is outside the row, and that will leave noise on the screen
-            self.fb.draw_rectangle(8, y, 220, 1, _cfg.YELLOW)
+            self.fb.draw_rectangle(self.x + 4, y, self.width - 8, 2, _cfg.YELLOW)
             return hex_code
 
         

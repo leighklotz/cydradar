@@ -1,115 +1,153 @@
-# Retro ADS-B Radar for ESP32 (CYD Display)
+# Retro ADS-B Radar for Pimoroni Presto
 
-This project implements a basic ADS-B radar display on an ESP32 using a CYD (Cheap Yellow Display) ILI9341 display.  
+This project implements a retro-style ADS-B radar display on the [Pimoroni Presto](https://shop.pimoroni.com/products/presto) (RP2350 + ST7701 480×480 touchscreen).
 
-It fetches aircraft data from a local dump1090 instance (or similar) and visualizes them on the radar screen.  This is adapted from the Raspberry Pi project [nicespoon/retro-adsb-radar](https://github.com/nicespoon/retro-adsb-radar) and optimized for MicroPython on the ESP32 with the CYD libraries.
-
-- ![Screen](docs/screenshot.jpg)
+It fetches aircraft data from a local [dump1090](https://github.com/flightaware/dump1090) instance and visualizes them on a radar screen.  Adapted from the Raspberry Pi project [nicespoon/retro-adsb-radar](https://github.com/nicespoon/retro-adsb-radar), ported to MicroPython on the Pimoroni Presto.
 
 ## Features
 
-*   **ADS-B Decoding Visualization:**  Displays aircraft positions, altitude, speed, track, and callsign.
-*   **MicroPython Compatibility:** Specifically designed for MicroPython on ESP32 with the CYD library.
-*   **Radar Scope Display:** Presents aircraft as pips on a radar-style screen with range rings and crosshairs.
-*   **Aircraft Table:** Provides a tabular listing of nearby aircraft with key information.
+*   **ADS-B Visualization:** Displays aircraft positions, altitude, speed, track, and callsign.
+*   **Radar Scope:** Pips on a radar-style display with range rings and crosshairs.
+*   **Aircraft Table:** Tabular listing of nearby aircraft with key information.
 *   **Military Aircraft Identification:** Highlights military aircraft in red.
-*   **Configurable Parameters:** Adjustable range, display colors, waypoints, and other settings.
-*   **Touchscreen Controls:** 
-    *   Tap scope header to refresh (center) or to switch layouts: (left, right)
-    *   Tap aircraft row to select/deselect (yellow highlight)
-    *   Tape elsewhere in table to deselect
-    *   Selected aircraft show yellow highlight in both table and scope
+*   **Configurable:** Adjustable range, display colors, waypoints, and other settings.
+*   **Touchscreen Controls:**
+    *   Tap scope to switch layouts (left/center/right zones)
+    *   Tap an aircraft row to select/deselect (yellow highlight)
+    *   Tap elsewhere in table to deselect
+    *   Selected aircraft highlighted in both table and scope
 
 ## Hardware Requirements
 
-*   ESP32 Development Board
-*   CYD ILI9341 Display Module (2.4" or similar)
-*   WiFi Connectivity (for fetching data)
+*   [Pimoroni Presto](https://shop.pimoroni.com/products/presto) (RP2350, 480×480 ST7701 display, capacitive touch)
+*   WiFi connectivity (built-in on Presto)
 
 ## Software Requirements
 
-*   MicroPython Firmware for ESP32
-*   [jtobinart/MicroPython\_CYD\_ESP32-2432S028R](https://github.com/jtobinart/MicroPython_CYD_ESP32-2432S028R) CYD Libraries (install on the ESP32)
-*   `requests` library
-*   `xglcd_font` library
+*   [Pimoroni Presto MicroPython firmware](https://github.com/pimoroni/presto) (includes PicoGraphics, EzWiFi, and FT6236 touch driver)
+*   [Thonny IDE](https://thonny.org/) (recommended for uploading and running files)
 
 ## Installation
 
-1.  **Flash MicroPython:**  Install the latest MicroPython firmware on your ESP32.
-2.  **Install CYD Libraries:** Follow the instructions in the [jtobinart/MicroPython\_CYD\_ESP32-2432S028R](https://github.com/jtobinart/MicroPython_CYD_ESP32-2432S028R) repository to install the necessary CYD libraries on your ESP32.
-3.  **Install Dependencies:** Connect your ESP32 to your computer and use `mip install requests xglcd_font`.
-4.  **Copy Files:** Copy all the Python files (`boot.py`, `main.py`, `cfg.py`, `datatable.py`, `aircraft.py`, `radar.py`, `radarscope.py`, `utils.py`, `fetch.py`) to the root directory of your ESP32.
-5.  **Configure WiFi:**  Create a `secrets.py` file (see `secrets.py.example` for the structure) and enter your WiFi SSID and password.  **Do not commit `secrets.py` to version control!**
+### 1. Flash Firmware
 
-## Configuration
+Flash the latest Pimoroni Presto MicroPython firmware from the [Pimoroni Presto releases page](https://github.com/pimoroni/presto/releases).
 
-The `cfg.py` file contains configurable parameters:
+### 2. Configure WiFi credentials
 
-*   `DUMP1090_URL`:  The URL of your dump1090 (or similar) server.  Defaults to `http://localhost:8080/aircraft.json`.
-*   `LAT`, `LON`: Your latitude and longitude (used for distance calculations).
-*   `RADIUS_NM`: The radar display range in nautical miles.
-*   `TRAIL_MIN_LENGTH`, `TRAIL_MAX_LENGTH`, `TRAIL_MAX_SPEED`: Parameters controlling the aircraft track trail.
-*   `BLINK_MILITARY`:  Enable or disable blinking for military aircraft.
-*   `FETCH_INTERVAL`: The interval (in seconds) between data fetches.
-*   `MAX_TABLE_ROWS`: The maximum number of rows to display in the aircraft table.
-*   `MIL_PREFIX_LIST`: List of hex prefixes to identify military aircraft.
-*   Color constants to customize the display.
+Create `secrets.py` based on `secrets.py.example`:
+
+```python
+WIFI_SSID = "your_network_name"
+WIFI_PASSWORD = "your_network_password"
+```
+
+The Presto firmware reads `WIFI_SSID` and `WIFI_PASSWORD` (these exact uppercase names are required) from `secrets.py` in the root of the device.  Place this file at the **root** of the Presto filesystem (`/secrets.py`), not inside the `cydradar` subdirectory.
+
+> **Do not commit `secrets.py` to version control!**
+
+### 3. Copy the application files
+
+Using Thonny (or another MicroPython file manager), create a `cydradar` directory on the Presto and upload all of the following files into it:
+
+```
+/
+    cydradar.py
+
+/cydradar/
+    radar.py
+    scope.py
+    datatable.py
+    display_wrapper.py
+    aircraft.py
+    fetch.py
+    utils.py
+    cfg.py          ← copy from cfg.py.sample and edit
+```
+
+Do **not** place application files in the root directory (`/`) — the Presto may have other MicroPython software installed there.
+
+### 4. Configure the application
+
+Copy `cfg.py.sample` to `cfg.py` inside the `cydradar` directory and edit it:
+
+```python
+DUMP1090_URL = 'http://192.168.1.x:8080/aircraft.json'  # your dump1090 host
+LAT = 37.4611                                            # your latitude
+LON = -122.1150                                          # your longitude
+RADIUS_NM = 15                                           # radar range
+```
+
+### 5. Run with Thonny
+
+1. Open Thonny and connect to the Presto via USB.
+2. Open `/cydradar/main.py` on the device.
+3. Click **Run** (▶) — Thonny will execute `/cydradar/main.py` directly on the device.
+
+`main.py` automatically adds `/cydradar` to `sys.path` so all module imports resolve correctly regardless of the working directory.
+
+## Configuration (`cfg.py`)
+
+| Parameter | Description |
+|---|---|
+| `DUMP1090_URL` | URL of your dump1090 JSON endpoint |
+| `LAT`, `LON` | Your location (used for distance calculations) |
+| `RADIUS_NM` | Radar display range in nautical miles |
+| `TRAIL_MIN_LENGTH` / `TRAIL_MAX_LENGTH` | Pixel length range for aircraft track lines |
+| `TRAIL_MAX_SPEED` | Speed (kts) at which trail reaches maximum length |
+| `FETCH_INTERVAL` | Seconds between data fetches |
+| `MIN_FETCH_TIME` | Minimum loop time in milliseconds |
+| `MIL_PREFIX_LIST` | Hex code prefixes for military aircraft (shown in red) |
+| `WAYPOINTS` | Dict of named waypoints `{name: (lat, lon)}` |
+| Color constants | `BRIGHT_GREEN`, `DIM_GREEN`, `RED`, `AMBER`, `YELLOW`, `BLACK`, `WHITE` as `(r, g, b)` tuples |
 
 ## Usage
 
-### Touchscreen Controls
+### Layout Modes
 
-The display supports three layout modes that can be cycled through by tapping the table header or radar scope:
+Tap the radar scope area to cycle through three layout modes:
 
-#### Layout Modes
+1. **Mode 0 — Large Radar:** Full-width scope with a compact table below.
+2. **Mode 1 — Split Screen:** Scope on the top half, full table on the bottom half.
+3. **Mode 2 — Table Only:** Full-screen aircraft data table.
 
-1. **Mode 0 - Large Radar:** Large radar scope with compact table below
-   
-   ![Layout Mode 0](docs/layout-mode-0.jpg)
+### Touch Interactions
 
-2. **Mode 1 - Split Screen:** Medium radar scope with full-height table side-by-side
-   
-   ![Layout Mode 1](docs/layout-mode-1.jpg)
+| Touch area | Action |
+|---|---|
+| Radar scope — left third | Previous layout mode |
+| Radar scope — right third | Next layout mode |
+| Radar scope — center | Change radar range (cycles 5→10→15→30→50→5 NM) |
+| Aircraft row | Select / toggle selection (yellow highlight) |
+| Empty table area | Deselect current aircraft |
 
-3. **Mode 2 - Full Table:** Full-screen aircraft data table
-   
-   ![Layout Mode 2](docs/layout-mode-2.jpg)
+### Selection Behavior
 
-#### Touch Interactions
-
-*   **Tap table header (title/column headers):** Switch to next layout mode
-*   **Tap aircraft row:** Select aircraft (yellow highlight in table and scope)
-*   **Tap selected aircraft row again:** Deselect aircraft
-*   **Tap empty table area (between/after rows):** Deselect current aircraft
-*   **Tap radar scope area:** Switch to next layout mode (when scope is visible in Mode 0 or 1)
-*   **Tap outside table boundary:** Switch to next layout mode
-
-#### Selection Behavior
-
-*   Only one aircraft can be selected at a time
-*   Selected aircraft displays with:
+*   Only one aircraft can be selected at a time.
+*   Selected aircraft shows:
     *   Yellow background in the data table with black text
-    *   Yellow track line on the radar scope (green track becomes yellow)
-    *   Yellow highlight ring around the blip (only shown on initial selection tap)
-    *   Callsign label always visible (even if previously hidden)
-*   Selection persists across layout changes and data updates
-*   Selection automatically cleared when switching layouts
-*   Touches within table row area never trigger layout changes (selection/deselection only)
-
-## About ADSB JSON
-- See [docs/ADSB](docs/ADSB.md)
+    *   Yellow track line on the radar scope
+    *   Yellow highlight ring around the blip (on initial tap only)
+    *   Callsign label always visible
+*   Selection persists across layout changes and data updates.
 
 ## Code Overview
 
-*   **`boot.py`:** Initializes the ESP32, turns off the RGB LED, and adds the `/libraries` directory to the Python path.
-*   **`main.py`:**  Initializes the WiFi connection and starts the `radar.py` script.
-*   **`cfg.py`:** Defines configuration parameters (latitude, longitude, display range, etc.).
-*   **`datatable.py`:**  Implements the aircraft data table display.
-*   **`aircraft.py`:** Defines the `Aircraft` class and includes a test function.
-*   **`radar.py`:** Contains the main radar logic, including data fetching, display drawing, and update loops.
-*   **`radarscope.py`:**  Provides the radar scope display functions (drawing rings, aircraft, etc.).
-*   **`utils.py`:** Utility functions for calculating distance and bearing.
-*   **`fetch.py`:** Handles fetching JSON data.
+| File | Description |
+|---|---|
+| `main.py` | Entry point; adds `/cydradar` to `sys.path` and starts the app |
+| `radar.py` | Main app logic: `App` (Presto init, pen setup) and `Radar` (layout, touch, draw loop) |
+| `scope.py` | `RadarScope` — draws rings, crosshairs, aircraft blips and trails |
+| `datatable.py` | `DataTable` — draws the aircraft data table |
+| `display_wrapper.py` | `PicoDisplay` wrapper adapting PicoGraphics to the CYD-style drawing API; `PixelFont` descriptor |
+| `aircraft.py` | `AircraftData` namedtuple and factory function |
+| `fetch.py` | `AircraftTracker` — fetches JSON from dump1090 |
+| `utils.py` | `calculate_distance_bearing()` — great-circle math |
+| `cfg.py` | User configuration (copy from `cfg.py.sample`) |
+
+## About ADS-B JSON
+
+See [docs/ADSB.md](docs/ADSB.md) for details on the dump1090 JSON format.
 
 ## License
 

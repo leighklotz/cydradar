@@ -51,8 +51,10 @@ The Presto firmware reads `WIFI_SSID` and `WIFI_PASSWORD` (these exact uppercase
 Using Thonny (or another MicroPython file manager), create a `cydradar` directory on the Presto and upload all of the following files into it:
 
 ```
+/
+    cydradar.py
+
 /cydradar/
-    main.py
     radar.py
     scope.py
     datatable.py

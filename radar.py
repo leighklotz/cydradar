@@ -175,10 +175,7 @@ class Radar:
             end_time = utime.ticks_ms()
             loop_time = end_time - start_time
             waiting_time = _cfg.MIN_FETCH_TIME - loop_time
-            if (waiting_time <= 0):
-                print(f"{loop_time=}ms")
-            else:
-                print(f"{loop_time=} < {_cfg.MIN_FETCH_TIME=} so {waiting_time=}ms")
+            if waiting_time > 0:
                 self.touch_poll_wait(waiting_time)
 
 
@@ -281,9 +278,9 @@ class App:
         self.display.clear(_cfg.BLACK)
         self.presto.update()
 
-        # Fonts: PixelFont(scale=2) -> 16 px tall, ~12 px wide per character
+        # Fonts: PixelFont(scale=1) -> 8 px tall, ~6 px wide per character
         self.status_font = PixelFont(scale=1)
-        self.table_font = PixelFont(scale=2)
+        self.table_font = PixelFont(scale=1)
 
         # Create the aircraft tracker
         self.aircraft_tracker = AircraftTracker()

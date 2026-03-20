@@ -95,7 +95,6 @@ class RadarScope:
     def draw_waypoints(self, waypoint_list, show_label=True):
         if waypoint_list:
             for (name,(lat, lon)) in waypoint_list.items():
-                print(f"self.draw_waypoint({name=}, {lat=}, {lon=}, {show_label=})")
                 self.draw_waypoint(name, lat, lon, show_label)
 
     def draw_waypoint(self, name, lat, lon, show_label=True):
